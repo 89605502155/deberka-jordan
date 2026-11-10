@@ -1,0 +1,21 @@
+name: Publish
+
+# Publishes to PyPI on a version tag (v0.1.0 ...) via trusted publishing.
+# Configure the trusted publisher on pypi.org first: project jordanplan-deberka,
+# workflow publish.yml, environment pypi.
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build
+      - run: uv publish --trusted-publishing always

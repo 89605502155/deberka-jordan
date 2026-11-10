@@ -1,0 +1,210 @@
+"""The Jordan plan of a reallocation cycle and netting of transfer proposals.
+
+Claim 1 (lower bound on volume). Any sequence of operations that moves the
+shares from ``a`` to ``a'`` has volume at least ``W = sum |a'_i - a_i|`` over
+consumers. The bound is attained when every consumer only gives or only
+receives. The Jordan plan does exactly that: it nets all proposals of a cycle
+per consumer and executes only the net change.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Hashable, Iterable, Mapping
+from dataclasses import dataclass, field
+from typing import Any, Generic, NamedTuple, TypeVar
+
+from .measure import POOL, SignedMeasure
+
+K = TypeVar("K", bound=Hashable)
+
+
+class Transfer(NamedTuple):
+    """Proposal to move ``amount`` units from ``source`` to ``recipient``."""
+
+    source: Hashable
+    recipient: Hashable
+    amount: float
+
+
+@dataclass(frozen=True)
+class Plan(Generic[K]):
+    """Plan of one reallocation cycle.
+
+    ``donors`` and ``recipients`` hold non-negative amounts: how much to take
+    from and how much to give to each consumer (the parts ``nu-`` and ``nu+``
+    of the Jordan decomposition restricted to consumers).
+    """
+
+    donors: dict[K, float]
+    recipients: dict[K, float]
+    pool_before: float
+    rationed: bool = False
+    skipped: dict[K, float] = field(default_factory=dict)
+    """Changes suppressed by the dead band, ``consumer -> requested change``."""
+
+    @property
+    def take(self) -> float:
+        """Total amount reclaimed from donors."""
+        return sum(self.donors.values())
+
+    @property
+    def give(self) -> float:
+        """Total amount granted to recipients."""
+        return sum(self.recipients.values())
+
+    @property
+    def pool_change(self) -> float:
+        """``nu({pool})``: change of free capacity after the cycle."""
+        return self.take - self.give
+
+    @property
+    def pool_after(self) -> float:
+        return self.pool_before + self.pool_change
+
+    @property
+    def volume(self) -> float:
+        """Volume of operations ``sum |nu({i})|`` over consumers (Claim 1)."""
+        return self.take + self.give
+
+    @property
+    def peak(self) -> float:
+        """Highest pool level during two-phase execution (after phase 1)."""
+        return self.pool_before + self.take
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.donors and not self.recipients
+
+    def measure(self, pool: Hashable | None = POOL) -> SignedMeasure[Hashable]:
+        """The signed measure of the cycle, closed by the pool atom if given."""
+        atoms: dict[Hashable, float] = {k: v for k, v in self.recipients.items()}
+        for k, v in self.donors.items():
+            atoms[k] = atoms.get(k, 0.0) - v
+        if pool is not None:
+            atoms[pool] = -sum(atoms.values())
+        return SignedMeasure(atoms)
+
+    def targets(self, current: Mapping[K, float]) -> dict[K, float]:
+        """New shares of the consumers touched by the plan."""
+        out = {k: current[k] - x for k, x in self.donors.items()}
+        out.update({k: current[k] + x for k, x in self.recipients.items()})
+        return out
+
+
+def ration(demand: Mapping[K, float], budget: float,
+           priority: Mapping[K, float] | None = None) -> dict[K, float]:
+    """Split an insufficient ``budget`` among recipients.
+
+    Without ``priority`` the budget is split in proportion to demand. With
+    ``priority`` (smaller value means more urgent, for example the current
+    headroom of a consumer) the recipients are served in that order.
+    """
+    budget = max(float(budget), 0.0)
+    if priority is None:
+        total = sum(demand.values())
+        k = min(budget / total, 1.0) if total > 0.0 else 0.0
+        return {c: x * k for c, x in demand.items() if x * k > 0.0}
+    out: dict[K, float] = {}
+    for c in sorted(demand, key=lambda name: priority.get(name, 0.0)):
+        give = min(demand[c], budget)
+        if give > 0.0:
+            out[c] = give
+        budget -= give
+    return out
+
+
+def jordan_plan(current: Mapping[K, float], target: Mapping[K, float], pool_free: float,
+                *, deadband: float = 0.0, force: Iterable[K] = (),
+                floor: Mapping[K, float] | None = None,
+                ceiling: Mapping[K, float] | None = None,
+                priority: Mapping[K, float] | None = None) -> Plan[K]:
+    """Build the plan of the cycle ``current -> target``.
+
+    Steps: clip targets to ``[floor, ceiling]``, drop changes with
+    ``|change| < deadband`` (unless the consumer is in ``force``), split the
+    consumers by the Hahn decomposition, and ration recipients if donors plus
+    the free pool cannot cover them.
+
+    The returned plan never needs more than ``pool_free + take``, so its
+    two-phase execution keeps the pool non-negative (Claim 2).
+    """
+    if pool_free < 0.0:
+        raise ValueError("pool_free must be non-negative")
+    if deadband < 0.0:
+        raise ValueError("deadband must be non-negative")
+    forced = set(force)
+    floor = floor or {}
+    ceiling = ceiling or {}
+    nu: dict[K, float] = {}
+    skipped: dict[K, float] = {}
+    for c, a in current.items():
+        t = target.get(c, a)
+        t = max(t, floor.get(c, float("-inf")))
+        t = min(t, ceiling.get(c, float("inf")))
+        x = float(t - a)
+        if x == 0.0:
+            continue
+        if abs(x) >= deadband or c in forced:
+            nu[c] = x
+        else:
+            skipped[c] = x
+    hahn = SignedMeasure(nu).jordan()
+    plus, minus = dict(hahn.plus), dict(hahn.minus)
+    budget = pool_free + sum(minus.values())
+    rationed = False
+    if sum(plus.values()) > budget:
+        plus = ration(plus, budget, priority)
+        rationed = True
+    return Plan(minus, plus, float(pool_free), rationed, skipped)
+
+
+# Netting -----------------------------------------------------------------
+
+def net_transfers(transfers: Iterable[tuple[K, K, float]]) -> SignedMeasure[K]:
+    """Net all transfer proposals of a cycle into one measure over consumers."""
+    return SignedMeasure.from_transfers(transfers)
+
+
+def sequential_volume(transfers: Iterable[tuple[K, K, float]]) -> float:
+    """Volume when every proposal is executed on its own (take + give)."""
+    return 2.0 * sum(float(amount) for _, _, amount in transfers)
+
+
+def lower_bound_volume(nu: Mapping[Any, float], pool: Hashable | None = POOL) -> float:
+    """``W = sum |nu({i})|`` over consumers (the pool atom is excluded)."""
+    return sum(abs(x) for c, x in nu.items() if c != pool)
+
+
+@dataclass(frozen=True, slots=True)
+class NettingReport:
+    """Gain of netting for one cycle."""
+
+    cycle: Hashable
+    n_transfers: int
+    sequential_volume: float
+    jordan_volume: float
+
+    @property
+    def ratio(self) -> float:
+        """``W / W_seq``; less than one means netting saves operations."""
+        return self.jordan_volume / self.sequential_volume if self.sequential_volume else 1.0
+
+    @property
+    def gain(self) -> float:
+        """``1 - W / W_seq``."""
+        return 1.0 - self.ratio
+
+
+def netting_report(transfers: Iterable[tuple[K, K, float]],
+                   cycle: Hashable = None) -> NettingReport:
+    ts = list(transfers)
+    return NettingReport(cycle, len(ts), sequential_volume(ts),
+                         lower_bound_volume(net_transfers(ts), pool=None))
+
+
+def netting_by_cycle(rows: Iterable[tuple[Hashable, K, K, float]]) -> list[NettingReport]:
+    """Netting gain per cycle for a proposal log ``(cycle, source, recipient, amount)``."""
+    cycles: dict[Hashable, list[tuple[K, K, float]]] = {}
+    for cycle, source, recipient, amount in rows:
+        cycles.setdefault(cycle, []).append((source, recipient, float(amount)))
+    return [netting_report(ts, cycle) for cycle, ts in cycles.items()]

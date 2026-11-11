@@ -1,153 +1,130 @@
-# jordanplan
+# deberka-jordan
 
-Reallocation plans for a shared resource by the Hahn–Jordan decomposition.
+[![PyPI](https://img.shields.io/pypi/v/deberka-jordan.svg)](https://pypi.org/project/deberka-jordan/)
+[![Python](https://img.shields.io/pypi/pyversions/deberka-jordan.svg)](https://pypi.org/project/deberka-jordan/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/89605502155/deberka-jordan/blob/main/LICENSE)
 
-`jordanplan` treats one reallocation cycle among consumers of a common pool
-(host memory shared by virtual machines, CPU quota, bandwidth, budget) as a
-**signed measure**. From that measure it builds:
+**Reallocation plans for a shared resource from the Hahn–Jordan decomposition.**
 
-1. **The least-volume plan.** Netting all proposals of a cycle by the Jordan
-   decomposition gives the minimum possible volume of operations
-   `W = Σ|a'ᵢ − aᵢ|`.
-2. **A safe order.** Donors first, recipients second. The pool never goes
-   negative, even with slow actuators or donors that cannot give everything.
-3. **An oscillation index and a dead band.** The jump measure of each
-   consumer on the time axis gives `κ = 1 − |ξ(W)| / |ξ|(W)`, and a sweep picks
-   the smallest dead band `h` that keeps `κ` below a target. The number of
-   operations is then provably bounded by `V/h`.
+A reallocation cycle among consumers of one pool (memory of a host, CPU quota,
+bandwidth) is a signed measure on the set "pool and consumers". deberka-jordan
+computes:
 
-The core is pure Python with no dependencies. A libvirt backend for KVM memory
-ballooning is an optional extra.
+* the Hahn decomposition of the cycle: donors and recipients;
+* the Jordan plan, the netting of all proposals of a cycle with the least
+  volume of operations, `W = Σ |ν({i})|`;
+* a safe two-phase order (donors first, then recipients) that never overdraws
+  the pool, and an executor that waits for the memory actually freed;
+* the oscillation index `κ` of a controller on the time axis and a dead band `h`
+  chosen by the replay of a demand trace.
 
-[Русская версия](README.ru.md)
+The first target is KVM memory ballooning through libvirt; nothing in the core
+is specific to it.
 
-## Install
+Русская версия: [README.ru.md](https://github.com/89605502155/deberka-jordan/blob/main/README.ru.md).
+Documentation: [English](https://github.com/89605502155/deberka-jordan/tree/main/docs/en) ·
+[Русский](https://github.com/89605502155/deberka-jordan/tree/main/docs/ru) ·
+[Changelog](https://github.com/89605502155/deberka-jordan/blob/main/CHANGELOG.md) ·
+[Issues](https://github.com/89605502155/deberka-jordan/issues)
 
-```bash
-pip install jordanplan-deberka            # core
-pip install "jordanplan-deberka[kvm]"     # + libvirt backend
+The library accompanies article 2 of the series by Andrey Ferubko, Bryansk State
+Engineering-Technological University (BGITU). Theory:
+[docs/en/theory.md](https://github.com/89605502155/deberka-jordan/blob/main/docs/en/theory.md).
+
+## Installation
+
+```sh
+pip install deberka-jordan                # core: no dependencies
+pip install "deberka-jordan[kvm]"         # plus libvirt-python for live domains
 ```
 
-Python 3.11–3.14. The import name is `jordanplan`.
+Requires Python 3.11 or newer.
 
 ## Quick start
 
 ```python
-from jordanplan import jordan_plan, two_phase, recipients_first, min_pool
+from deberka_jordan import SignedMeasure, jordan_plan, min_pool, netting_report
+from deberka_jordan import recipients_first, two_phase
 
-current = {"vm1": 2000, "vm2": 3000, "vm3": 1500, "vm4": 2500}   # MiB
-target  = {"vm1": 2600, "vm2": 2500, "vm3": 1530, "vm4": 2100}
+nu = SignedMeasure({"a": 3.0, "b": -1.0, "c": -2.0})
+print(nu.total(), nu.total_variation())  # 0.0 6.0
 
-plan = jordan_plan(current, target, pool_free=100, deadband=64)
-plan.donors        # {'vm2': 500.0, 'vm4': 400.0}
-plan.recipients    # {'vm1': 600.0}
-plan.skipped       # {'vm3': 30.0}  below the dead band
-plan.volume        # 1500.0  = Σ|ν({i})|, the lower bound
+current = {"vm1": 2000.0, "vm2": 3000.0, "vm3": 1500.0, "vm4": 2500.0}  # MiB
+target = {"vm1": 2600.0, "vm2": 2500.0, "vm3": 1530.0, "vm4": 2100.0}
+plan = jordan_plan(current, target, pool_free=100.0, deadband=64.0)
+print(plan.volume)  # 1500.0 MiB of operations
+print(min_pool(two_phase(plan), 100.0))  # 100.0: the pool never goes below its start
+print(min_pool(recipients_first(plan), 100.0))  # -500.0: the wrong order overdraws it
 
-min_pool(two_phase(plan), 100)          # 100.0  never negative
-min_pool(recipients_first(plan), 100)   # -500.0 overdraws the pool
+report = netting_report([("vm1", "vm2", 300.0), ("vm2", "vm3", 300.0), ("vm3", "vm1", 100.0)])
+print(report.sequential_volume, report.jordan_volume)  # 1400.0 400.0
 ```
 
-### Netting a controller's proposals
+Command line, on a state file with the columns `consumer,current,target`:
 
-```python
-from jordanplan import netting_report
+    deberka-jordan plan state.csv --pool 100 --deadband 64
+    deberka-jordan net proposals.csv --out netting.csv
+    deberka-jordan deadband trace.csv --h 0,64,128 --reserve 256
 
-proposals = [("vm1", "vm2", 300), ("vm2", "vm3", 300), ("vm3", "vm1", 100)]
-r = netting_report(proposals)
-r.sequential_volume, r.jordan_volume, r.gain     # (1400.0, 400.0, 0.714...)
-```
+## How it differs from existing packages
 
-### Executing on actuators with finite speed
+The Hahn and Jordan decompositions are classical measure theory (Halmos, §28–29).
+PyPI has packages for matrices and for topological data analysis that carry the
+same names, and none of them does what this library does:
 
-```python
-from jordanplan import RateLimitedSim, execute_two_phase, jordan_plan
+* `jordan-form` computes the Jordan normal form of a matrix, a different object;
+* `multipers` works with persistence modules in topological data analysis.
 
-plan = jordan_plan(current, {"vm1": 2800, "vm2": 2200}, pool_free=0)
-sim = RateLimitedSim(current, pool_free=0, take_rate=200, give_rate=800,
-                     reclaimable={"vm2": 500})          # vm2 can give only 500
-rep = execute_two_phase(sim, plan, current, timeout_s=10)
-rep.freed, rep.given, rep.pool_min, rep.rationed
-# ({'vm2': 500.0}, {'vm1': 500.0}, 0.0, True)
-```
+Packages for resource allocation (quota schedulers, job placement) pick targets,
+they do not net a cycle of proposals into the least volume of operations, and
+they do not give a safe order of operations for a pool.
 
-The same call drives real VMs:
-
-```python
-from jordanplan.kvm import LibvirtBackend
-
-be = LibvirtBackend.connect("qemu:///system", ["vm1", "vm2", "vm3"])
-cur = be.snapshot()                                   # balloon `actual`, MiB
-plan = jordan_plan(cur, new_targets, be.pool_free(), deadband=64)
-execute_two_phase(be, plan, cur, timeout_s=60)
-```
-
-Any object with `now()`, `get_actual()`, `set_target()` and `sleep()` is a
-backend: cgroups, cloud quotas, a test double.
-
-### Choosing a dead band
-
-```python
-from jordanplan import deadband_sweep, choose_deadband
-
-# demand: {"vm1": [...], "vm2": [...]} sampled every dt seconds
-res = deadband_sweep(demand, dt=0.1, deadbands=[0, 16, 32, 64, 128, 256],
-                     reserve=256, interval=2.0)
-for r in res:
-    print(r.h, r.cycles, r.volume, r.kappa_median, r.deficit_integral, r.bound)
-choose_deadband(res, kappa_target=0.5)
-```
-
-## Command line
-
-```bash
-jordanplan plan state.csv --pool 100 --deadband 64     # consumer,current,target
-jordanplan net proposals.csv --out netting.csv         # cycle,source,recipient,amount
-jordanplan deadband trace.csv --interval 2 --reserve 256 --h 0,32,64,128 --out sweep.csv
-```
-
-`trace.csv` has a `t_s` column on a uniform grid and one column per consumer.
-
-## Theory in short
-
-Let `X = {pool, 1, …, N}`. A cycle `a → a'` is the signed measure
-`ν({i}) = a'ᵢ − aᵢ`, `ν({pool}) = −Σν({i})`, so `ν(X) = 0`
-(Halmos, *Measure Theory*, §28–29).
-
-| Claim | Statement | Where |
+| Feature | deberka-jordan | `jordan-form`, `multipers`, allocation schedulers |
 |---|---|---|
-| 1. Lower bound | Any sequence of operations moving `a` to `a'` has volume `≥ W = Σ|ν({i})|`. The Jordan plan attains it. Netting gain is `1 − W/W_seq`. | `jordan_plan`, `netting_report` |
-| 2. Safe order | If the pool is non-negative before and after the cycle, donors-then-recipients keeps it non-negative at every moment. | `two_phase`, `execute_two_phase` |
-| 3. Dead band | With target `d + s`, threshold `h` and `s ≥ h`, the number of jumps is `≤ V/h` and their volume is `≤ V`, where `V` is the variation of observed demand. | `replay_reserve`, `cycles_bound` |
+| Hahn and Jordan decompositions of a finite signed measure on consumers and a pool | yes | no |
+| Least-volume netting of a cycle, `W = Σ |ν({i})|`, with the sequential baseline | yes | no |
+| Safe two-phase order that never overdraws the pool, with an executor that waits for freed memory | yes | no |
+| Oscillation index `κ` and dead band `h` chosen on a demand trace | yes | no |
+| Libvirt balloon backend (optional) | yes | no |
 
-All three are checked by property-based tests (`tests/`).
+## Modules
 
-## When it helps most
-
-| Situation | What you get |
+| Module | Contents |
 |---|---|
-| The controller emits pairwise transfers (diffusion, gossip, market-like matching), and one consumer can be both source and recipient in a cycle | Netting removes the transit volume: only the net change of every consumer is executed. |
-| The free pool is small and the actuator is slow (balloon inflation is slower than deflation) | The two-phase executor never overdraws the pool and grants only what was actually freed. |
-| The controller "breathes": allocations swing back and forth | `κ` measures it, and the dead band sweep trades operations for deficit with a proven bound. |
+| `measure` | `SignedMeasure`, `HahnDecomposition`, `JordanDecomposition` |
+| `plan` | `jordan_plan`, `Plan`, `ration`, netting: `netting_report`, `netting_by_cycle` |
+| `order` | `two_phase`, `recipients_first`, `shuffled`, `pairwise`, `min_pool`, `is_safe` |
+| `execute` | `execute_two_phase`, `execute_simultaneous`, `RateLimitedSim` |
+| `churn` | `kappa`, `replay_reserve`, `deadband_sweep`, `choose_deadband`, `cycles_bound` |
+| `kvm` | `LibvirtBackend`, `host_mem_available` (optional, needs libvirt-python) |
 
-When it does **not** help: if the controller already outputs final targets and
-the pool is large, the plan has nothing to net and any order is safe. Claim 1
-then only justifies executing the net change.
+## When it helps
+
+The numbers of the article are measured on the testbed and are not in this
+package. The examples show the mechanisms on small inputs:
+`examples/02_netting_log.py` (a ring of proposals nets 74 % of the volume, a
+fan-out does not net at all) and `examples/03_two_phase_fake.py` (the executor
+moves memory in the safe order).
 
 ## Development
 
-```bash
+```sh
 uv sync
-uv run pytest
-uv run ruff check src tests examples
+uv run ruff check . && uv run ruff format --check .
 uv run mypy
+uv run pytest
+bash scripts/install_hooks.sh   # once per clone: commit message limits
 ```
 
-## Citing
+Commit messages in this repository have a subject of at most 8 characters and no
+body. The hook is installed by `scripts/install_hooks.sh`; CI checks the same rule
+with `scripts/check_commit_msg.py`.
 
-If you use the library in research, please cite the accompanying paper
-(reference will be added after publication).
+## Citation
+
+See [CITATION.cff](https://github.com/89605502155/deberka-jordan/blob/main/CITATION.cff)
+or the "Cite this repository" button on GitHub.
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT. Copyright (c) 2026 Andrey Ferubko. See [LICENSE](https://github.com/89605502155/deberka-jordan/blob/main/LICENSE).

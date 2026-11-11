@@ -59,6 +59,7 @@ class Plan(Generic[K]):
 
     @property
     def pool_after(self) -> float:
+        """Pool level after the cycle, MiB."""
         return self.pool_before + self.pool_change
 
     @property
@@ -73,11 +74,12 @@ class Plan(Generic[K]):
 
     @property
     def is_empty(self) -> bool:
+        """True if the plan moves nothing."""
         return not self.donors and not self.recipients
 
     def measure(self, pool: Hashable | None = POOL) -> SignedMeasure[Hashable]:
-        """The signed measure of the cycle, closed by the pool atom if given."""
-        atoms: dict[Hashable, float] = {k: v for k, v in self.recipients.items()}
+        """Return the signed measure of the cycle, closed by the pool atom if given."""
+        atoms: dict[Hashable, float] = dict(self.recipients.items())
         for k, v in self.donors.items():
             atoms[k] = atoms.get(k, 0.0) - v
         if pool is not None:
@@ -85,14 +87,15 @@ class Plan(Generic[K]):
         return SignedMeasure(atoms)
 
     def targets(self, current: Mapping[K, float]) -> dict[K, float]:
-        """New shares of the consumers touched by the plan."""
+        """Return the new shares of the consumers touched by the plan."""
         out = {k: current[k] - x for k, x in self.donors.items()}
         out.update({k: current[k] + x for k, x in self.recipients.items()})
         return out
 
 
-def ration(demand: Mapping[K, float], budget: float,
-           priority: Mapping[K, float] | None = None) -> dict[K, float]:
+def ration(
+    demand: Mapping[K, float], budget: float, priority: Mapping[K, float] | None = None
+) -> dict[K, float]:
     """Split an insufficient ``budget`` among recipients.
 
     Without ``priority`` the budget is split in proportion to demand. With
@@ -113,11 +116,17 @@ def ration(demand: Mapping[K, float], budget: float,
     return out
 
 
-def jordan_plan(current: Mapping[K, float], target: Mapping[K, float], pool_free: float,
-                *, deadband: float = 0.0, force: Iterable[K] = (),
-                floor: Mapping[K, float] | None = None,
-                ceiling: Mapping[K, float] | None = None,
-                priority: Mapping[K, float] | None = None) -> Plan[K]:
+def jordan_plan(
+    current: Mapping[K, float],
+    target: Mapping[K, float],
+    pool_free: float,
+    *,
+    deadband: float = 0.0,
+    force: Iterable[K] = (),
+    floor: Mapping[K, float] | None = None,
+    ceiling: Mapping[K, float] | None = None,
+    priority: Mapping[K, float] | None = None,
+) -> Plan[K]:
     """Build the plan of the cycle ``current -> target``.
 
     Steps: clip targets to ``[floor, ceiling]``, drop changes with
@@ -129,9 +138,11 @@ def jordan_plan(current: Mapping[K, float], target: Mapping[K, float], pool_free
     two-phase execution keeps the pool non-negative (Claim 2).
     """
     if pool_free < 0.0:
-        raise ValueError("pool_free must be non-negative")
+        msg = "pool_free must be non-negative"
+        raise ValueError(msg)
     if deadband < 0.0:
-        raise ValueError("deadband must be non-negative")
+        msg = "deadband must be non-negative"
+        raise ValueError(msg)
     forced = set(force)
     floor = floor or {}
     ceiling = ceiling or {}
@@ -159,6 +170,7 @@ def jordan_plan(current: Mapping[K, float], target: Mapping[K, float], pool_free
 
 
 # Netting -----------------------------------------------------------------
+
 
 def net_transfers(transfers: Iterable[tuple[K, K, float]]) -> SignedMeasure[K]:
     """Net all transfer proposals of a cycle into one measure over consumers."""
@@ -195,11 +207,14 @@ class NettingReport:
         return 1.0 - self.ratio
 
 
-def netting_report(transfers: Iterable[tuple[K, K, float]],
-                   cycle: Hashable = None) -> NettingReport:
+def netting_report(
+    transfers: Iterable[tuple[K, K, float]], cycle: Hashable = None
+) -> NettingReport:
+    """Netting gain for the transfers of one cycle."""
     ts = list(transfers)
-    return NettingReport(cycle, len(ts), sequential_volume(ts),
-                         lower_bound_volume(net_transfers(ts), pool=None))
+    return NettingReport(
+        cycle, len(ts), sequential_volume(ts), lower_bound_volume(net_transfers(ts), pool=None)
+    )
 
 
 def netting_by_cycle(rows: Iterable[tuple[Hashable, K, K, float]]) -> list[NettingReport]:

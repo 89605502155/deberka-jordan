@@ -6,7 +6,7 @@ actually freed plus the free pool. So the pool stays non-negative even when an
 actuator is slow or a donor cannot give everything.
 
 Any object that implements :class:`Backend` can be driven: a simulator
-(:class:`RateLimitedSim`), libvirt domains (:mod:`jordanplan.kvm`), cgroups,
+(:class:`RateLimitedSim`), libvirt domains (:mod:`deberka_jordan.kvm`), cgroups,
 cloud quotas.
 """
 
@@ -27,7 +27,7 @@ class Backend(Protocol):
         """Monotonic time, seconds."""
 
     def get_actual(self, consumer: Hashable) -> float:
-        """Current actual share of the consumer."""
+        """Return the current actual share of the consumer."""
 
     def set_target(self, consumer: Hashable, target: float) -> None:
         """Request a new share. The actuator moves towards it at its own pace."""
@@ -48,12 +48,18 @@ class RateLimitedSim:
     ``give_rate`` is the deflate speed, in MiB/s.
     """
 
-    def __init__(self, actual: Mapping[Hashable, float], pool_free: float,
-                 take_rate: float = 200.0, give_rate: float = 800.0,
-                 reclaimable: Mapping[Hashable, float] | None = None,
-                 step: float = 0.01) -> None:
+    def __init__(
+        self,
+        actual: Mapping[Hashable, float],
+        pool_free: float,
+        take_rate: float = 200.0,
+        give_rate: float = 800.0,
+        reclaimable: Mapping[Hashable, float] | None = None,
+        step: float = 0.01,
+    ) -> None:
         if take_rate <= 0.0 or give_rate <= 0.0 or step <= 0.0:
-            raise ValueError("rates and step must be positive")
+            msg = "rates and step must be positive"
+            raise ValueError(msg)
         self.actual = {c: float(a) for c, a in actual.items()}
         self.target = dict(self.actual)
         self.pool = float(pool_free)
@@ -64,18 +70,23 @@ class RateLimitedSim:
         self.t = 0.0
 
     def now(self) -> float:
+        """Monotonic time, seconds."""
         return self.t
 
     def get_actual(self, consumer: Hashable) -> float:
+        """Return the current actual share of the consumer."""
         return self.actual[consumer]
 
     def set_target(self, consumer: Hashable, target: float) -> None:
+        """Request a new share; the actuator moves towards it at its own pace."""
         self.target[consumer] = float(target)
 
     def pool_free(self) -> float:
+        """Free pool of the host, MiB."""
         return self.pool
 
     def sleep(self, dt: float) -> None:
+        """Wait ``dt`` seconds; a simulator advances its clock."""
         steps = max(1, round(dt / self.step))
         h = dt / steps
         for _ in range(steps):
@@ -109,8 +120,9 @@ class ExecReport:
     """True if recipients got less than planned because donors fell short."""
 
 
-def _wait(backend: Backend, targets: Mapping[Hashable, float], timeout_s: float,
-          poll_s: float, tol: float) -> list[Hashable]:
+def _wait(
+    backend: Backend, targets: Mapping[Hashable, float], timeout_s: float, poll_s: float, tol: float
+) -> list[Hashable]:
     start = backend.now()
     while True:
         left = [c for c, t in targets.items() if abs(backend.get_actual(c) - t) > tol]
@@ -119,10 +131,16 @@ def _wait(backend: Backend, targets: Mapping[Hashable, float], timeout_s: float,
         backend.sleep(poll_s)
 
 
-def execute_two_phase(backend: Backend, plan: Plan[Any], current: Mapping[Hashable, float],
-                      *, priority: Mapping[Hashable, float] | None = None,
-                      timeout_s: float = 30.0, poll_s: float = 0.1,
-                      tol: float = 1.0) -> ExecReport:
+def execute_two_phase(
+    backend: Backend,
+    plan: Plan[Any],
+    current: Mapping[Hashable, float],
+    *,
+    priority: Mapping[Hashable, float] | None = None,
+    timeout_s: float = 30.0,
+    poll_s: float = 0.1,
+    tol: float = 1.0,
+) -> ExecReport:
     """Execute ``plan`` safely.
 
     1. Set reduced targets for all donors.
@@ -151,13 +169,20 @@ def execute_two_phase(backend: Backend, plan: Plan[Any], current: Mapping[Hashab
         backend.set_target(c, t)
     left = _wait(backend, recip_targets, timeout_s, poll_s, tol)
     given = {c: backend.get_actual(c) - current[c] for c in give}
-    return ExecReport(freed, given, backend.now() - t0, getattr(backend, "pool_min", None),
-                      stuck + left, rationed)
+    return ExecReport(
+        freed, given, backend.now() - t0, getattr(backend, "pool_min", None), stuck + left, rationed
+    )
 
 
-def execute_simultaneous(backend: Backend, plan: Plan[Any], current: Mapping[Hashable, float],
-                         *, timeout_s: float = 30.0, poll_s: float = 0.1,
-                         tol: float = 1.0) -> ExecReport:
+def execute_simultaneous(
+    backend: Backend,
+    plan: Plan[Any],
+    current: Mapping[Hashable, float],
+    *,
+    timeout_s: float = 30.0,
+    poll_s: float = 0.1,
+    tol: float = 1.0,
+) -> ExecReport:
     """Set all targets at once. Baseline for comparison, not safe."""
     t0 = backend.now()
     targets = plan.targets(current)
@@ -166,5 +191,4 @@ def execute_simultaneous(backend: Backend, plan: Plan[Any], current: Mapping[Has
     left = _wait(backend, targets, timeout_s, poll_s, tol)
     freed = {c: max(current[c] - backend.get_actual(c), 0.0) for c in plan.donors}
     given = {c: backend.get_actual(c) - current[c] for c in plan.recipients}
-    return ExecReport(freed, given, backend.now() - t0, getattr(backend, "pool_min", None),
-                      left)
+    return ExecReport(freed, given, backend.now() - t0, getattr(backend, "pool_min", None), left)

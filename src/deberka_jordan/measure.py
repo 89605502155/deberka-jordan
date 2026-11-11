@@ -38,8 +38,9 @@ class SignedMeasure(Mapping[K, float], Generic[K]):
 
     __slots__ = ("_atoms",)
 
-    def __init__(self, atoms: Mapping[K, float] | Iterable[tuple[K, float]] = (),
-                 *, tol: float = 0.0) -> None:
+    def __init__(
+        self, atoms: Mapping[K, float] | Iterable[tuple[K, float]] = (), *, tol: float = 0.0
+    ) -> None:
         items = atoms.items() if isinstance(atoms, Mapping) else atoms
         acc: dict[K, float] = {}
         for key, value in items:
@@ -48,18 +49,23 @@ class SignedMeasure(Mapping[K, float], Generic[K]):
 
     # Mapping protocol -------------------------------------------------
     def __getitem__(self, key: K) -> float:
+        """Mass of one atom."""
         return self._atoms[key]
 
     def __iter__(self) -> Iterator[K]:
+        """Iterate over the atoms with non-zero mass."""
         return iter(self._atoms)
 
     def __len__(self) -> int:
+        """Return the number of atoms with non-zero mass."""
         return len(self._atoms)
 
     def __repr__(self) -> str:
+        """Readable representation."""
         return f"SignedMeasure({self._atoms!r})"
 
     def __eq__(self, other: object) -> bool:
+        """Equal atoms with equal masses."""
         if isinstance(other, SignedMeasure):
             return self._atoms == other._atoms
         return NotImplemented
@@ -68,8 +74,14 @@ class SignedMeasure(Mapping[K, float], Generic[K]):
 
     # Construction ------------------------------------------------------
     @classmethod
-    def from_allocations(cls, current: Mapping[K, float], target: Mapping[K, float],
-                         *, pool: K | None = None, tol: float = 0.0) -> SignedMeasure[K]:
+    def from_allocations(
+        cls,
+        current: Mapping[K, float],
+        target: Mapping[K, float],
+        *,
+        pool: K | None = None,
+        tol: float = 0.0,
+    ) -> SignedMeasure[K]:
         """Measure of the cycle ``current -> target``.
 
         ``nu({i}) = target[i] - current[i]``. Consumers missing from ``target``
@@ -82,13 +94,15 @@ class SignedMeasure(Mapping[K, float], Generic[K]):
                 atoms[k] = float(v)
         if pool is not None:
             if pool in atoms:
-                raise ValueError(f"pool atom {pool!r} clashes with a consumer name")
+                msg = f"pool atom {pool!r} clashes with a consumer name"
+                raise ValueError(msg)
             atoms[pool] = -sum(atoms.values())
         return cls(atoms, tol=tol)
 
     @classmethod
-    def from_transfers(cls, transfers: Iterable[tuple[K, K, float]],
-                       *, tol: float = 1e-9) -> SignedMeasure[K]:
+    def from_transfers(
+        cls, transfers: Iterable[tuple[K, K, float]], *, tol: float = 1e-9
+    ) -> SignedMeasure[K]:
         """Net effect of transfers ``(source, recipient, amount)``.
 
         This is the *netting* of a cycle: all proposals are summed per atom.
@@ -124,15 +138,19 @@ class SignedMeasure(Mapping[K, float], Generic[K]):
 
     # Algebra -----------------------------------------------------------
     def __add__(self, other: SignedMeasure[K]) -> SignedMeasure[K]:
+        """Sum of two measures."""
         return SignedMeasure([*self._atoms.items(), *other.items()])
 
     def __neg__(self) -> SignedMeasure[K]:
+        """Opposite measure."""
         return SignedMeasure({k: -v for k, v in self._atoms.items()})
 
     def __sub__(self, other: SignedMeasure[K]) -> SignedMeasure[K]:
+        """Difference of two measures."""
         return self + (-other)
 
     def __mul__(self, c: float) -> SignedMeasure[K]:
+        """Scalar multiple of the measure."""
         return SignedMeasure({k: v * c for k, v in self._atoms.items()})
 
     __rmul__ = __mul__

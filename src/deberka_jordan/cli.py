@@ -1,4 +1,4 @@
-"""Command line tool ``jordanplan``.
+"""Command line tool ``deberka-jordan``.
 
 Subcommands:
 
@@ -30,9 +30,15 @@ def _cmd_plan(args: argparse.Namespace) -> int:
     cur, tgt = read_state(args.state)
     p = jordan_plan(cur, tgt, args.pool, deadband=args.deadband)
     out = {
-        "donors": p.donors, "recipients": p.recipients, "skipped": p.skipped,
-        "take": p.take, "give": p.give, "volume": p.volume,
-        "pool_before": p.pool_before, "pool_peak": p.peak, "pool_after": p.pool_after,
+        "donors": p.donors,
+        "recipients": p.recipients,
+        "skipped": p.skipped,
+        "take": p.take,
+        "give": p.give,
+        "volume": p.volume,
+        "pool_before": p.pool_before,
+        "pool_peak": p.peak,
+        "pool_after": p.pool_after,
         "rationed": p.rationed,
         "min_pool_two_phase": min_pool(two_phase(p), args.pool),
         "min_pool_recipients_first": min_pool(recipients_first(p), args.pool),
@@ -46,17 +52,28 @@ def _cmd_plan(args: argparse.Namespace) -> int:
 
 def _cmd_net(args: argparse.Namespace) -> int:
     reps = netting_by_cycle(read_proposals(args.log))
-    rows = [{"cycle": r.cycle, "n_transfers": r.n_transfers,
-             "seq_volume": r.sequential_volume, "jordan_volume": r.jordan_volume,
-             "ratio": r.ratio} for r in reps]
+    rows = [
+        {
+            "cycle": r.cycle,
+            "n_transfers": r.n_transfers,
+            "seq_volume": r.sequential_volume,
+            "jordan_volume": r.jordan_volume,
+            "ratio": r.ratio,
+        }
+        for r in reps
+    ]
     if args.out:
         write_rows(args.out, rows)
     ratios = [r.ratio for r in reps if r.sequential_volume > 0]
     seq = sum(r.sequential_volume for r in reps)
     jor = sum(r.jordan_volume for r in reps)
-    summary = {"cycles": len(reps), "sequential_volume": seq, "jordan_volume": jor,
-               "overall_gain": 1.0 - jor / seq if seq else 0.0,
-               "median_ratio": statistics.median(ratios) if ratios else None}
+    summary = {
+        "cycles": len(reps),
+        "sequential_volume": seq,
+        "jordan_volume": jor,
+        "overall_gain": 1.0 - jor / seq if seq else 0.0,
+        "median_ratio": statistics.median(ratios) if ratios else None,
+    }
     json.dump(summary, sys.stdout, indent=2)
     print()
     return 0
@@ -64,13 +81,28 @@ def _cmd_net(args: argparse.Namespace) -> int:
 
 def _cmd_deadband(args: argparse.Namespace) -> int:
     dt, demand = read_trace(args.trace)
-    res = deadband_sweep(demand, dt, _floats(args.h), reserve=args.reserve,
-                         interval=args.interval, theta=args.theta,
-                         kappa_window=args.window)
-    rows = [{"h": r.h, "cycles": r.cycles, "jumps": len(r.jumps),
-             "bound_V_over_h": r.bound, "volume": r.volume,
-             "kappa_median": r.kappa_median, "deficit_integral": r.deficit_integral,
-             "deficit_share": r.deficit_share} for r in res]
+    res = deadband_sweep(
+        demand,
+        dt,
+        _floats(args.h),
+        reserve=args.reserve,
+        interval=args.interval,
+        theta=args.theta,
+        kappa_window=args.window,
+    )
+    rows = [
+        {
+            "h": r.h,
+            "cycles": r.cycles,
+            "jumps": len(r.jumps),
+            "bound_V_over_h": r.bound,
+            "volume": r.volume,
+            "kappa_median": r.kappa_median,
+            "deficit_integral": r.deficit_integral,
+            "deficit_share": r.deficit_share,
+        }
+        for r in res
+    ]
     if args.out:
         write_rows(args.out, rows)
     print("h\tcycles\tjumps\tbound\tvolume\tkappa\tdeficit_int\tdeficit_share")
@@ -81,7 +113,8 @@ def _cmd_deadband(args: argparse.Namespace) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="jordanplan", description=__doc__.splitlines()[0])
+    """Run the command line and return the exit status."""
+    ap = argparse.ArgumentParser(prog="deberka-jordan", description=__doc__.splitlines()[0])
     ap.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
@@ -91,8 +124,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("--deadband", type=float, default=0.0)
     p.set_defaults(func=_cmd_plan)
 
-    p = sub.add_parser("net", help="netting gain for a proposal log "
-                       "(cycle,source,recipient,amount)")
+    p = sub.add_parser(
+        "net", help="netting gain for a proposal log (cycle,source,recipient,amount)"
+    )
     p.add_argument("log")
     p.add_argument("--out", help="per-cycle CSV")
     p.set_defaults(func=_cmd_net)

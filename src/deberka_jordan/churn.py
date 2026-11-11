@@ -36,6 +36,8 @@ class Jump(NamedTuple):
 
 @dataclass(frozen=True, slots=True)
 class WindowStats:
+    """Jumps of one consumer in a window: total variation and net change."""
+
     variation: float
     """``|xi|(W)``: volume of operations in the window."""
     net: float
@@ -55,23 +57,26 @@ def kappa(deltas: Iterable[float]) -> float:
     return WindowStats(sum(abs(x) for x in ds), sum(ds)).kappa
 
 
-def jumps_of(jumps: Iterable[tuple[float, Hashable, float]],
-             consumer: Hashable) -> tuple[list[float], list[float]]:
-    """Times and sizes of the jumps of one consumer."""
+def jumps_of(
+    jumps: Iterable[tuple[float, Hashable, float]], consumer: Hashable
+) -> tuple[list[float], list[float]]:
+    """Return the times and sizes of the jumps of one consumer."""
     sel = [(t, x) for t, c, x in jumps if c == consumer]
     return [t for t, _ in sel], [x for _, x in sel]
 
 
-def window_stats(times: Sequence[float], deltas: Sequence[float], t_now: float,
-                 window: float) -> WindowStats:
+def window_stats(
+    times: Sequence[float], deltas: Sequence[float], t_now: float, window: float
+) -> WindowStats:
     """Statistics of jumps in ``(t_now - window, t_now]``."""
     lo = t_now - window
     xs = [x for t, x in zip(times, deltas, strict=True) if lo < t <= t_now]
     return WindowStats(sum(abs(x) for x in xs), sum(xs))
 
 
-def kappa_series(times: Sequence[float], deltas: Sequence[float],
-                 at: Iterable[float], window: float) -> list[float]:
+def kappa_series(
+    times: Sequence[float], deltas: Sequence[float], at: Iterable[float], window: float
+) -> list[float]:
     """Oscillation index in a sliding window evaluated at the moments ``at``."""
     return [window_stats(times, deltas, t, window).kappa for t in at]
 
@@ -87,6 +92,7 @@ def cycles_bound(samples: Sequence[float], h: float) -> float:
 
 
 # Replay of a reserve controller with a dead band ---------------------------
+
 
 @dataclass(frozen=True, slots=True)
 class ReplayResult:
@@ -110,10 +116,17 @@ class ReplayResult:
     """Median of the oscillation index over consumers and window positions."""
 
 
-def replay_reserve(demand: Mapping[Any, Sequence[float]], dt: float, *,
-                   reserve: float, deadband: float, interval: float | None = None,
-                   theta: float = 64.0, kappa_window: float = 60.0,
-                   kappa_step: float = 10.0) -> ReplayResult:
+def replay_reserve(
+    demand: Mapping[Any, Sequence[float]],
+    dt: float,
+    *,
+    reserve: float,
+    deadband: float,
+    interval: float | None = None,
+    theta: float = 64.0,
+    kappa_window: float = 60.0,
+    kappa_step: float = 10.0,
+) -> ReplayResult:
     """Replay the controller "demand + reserve" with a dead band on a trace.
 
     ``demand`` maps every consumer to samples on a uniform grid with step
@@ -123,13 +136,16 @@ def replay_reserve(demand: Mapping[Any, Sequence[float]], dt: float, *,
     is held between observations and the actuator is instantaneous.
     """
     if dt <= 0.0:
-        raise ValueError("dt must be positive")
+        msg = "dt must be positive"
+        raise ValueError(msg)
     names = list(demand)
     if not names:
-        raise ValueError("empty trace")
+        msg = "empty trace"
+        raise ValueError(msg)
     n = len(demand[names[0]])
     if any(len(demand[c]) != n for c in names):
-        raise ValueError("all consumers must have the same number of samples")
+        msg = "all consumers must have the same number of samples"
+        raise ValueError(msg)
     stride = max(1, round((interval or dt) / dt))
     a = {c: float(demand[c][0]) + reserve for c in names}
     jumps: list[Jump] = []
@@ -156,35 +172,43 @@ def replay_reserve(demand: Mapping[Any, Sequence[float]], dt: float, *,
                 deficit_sum += f * dt
                 above += f > theta
     var = sum(sampled_variation(observed[c]) for c in names)
-    bound = sum(cycles_bound(observed[c], deadband) for c in names) if deadband > 0 \
-        else math.inf
+    bound = sum(cycles_bound(observed[c], deadband) for c in names) if deadband > 0 else math.inf
     t_end = n * dt
-    at = [kappa_window + i * kappa_step
-          for i in range(max(0, math.ceil((t_end - kappa_window) / kappa_step)))]
+    at = [
+        kappa_window + i * kappa_step
+        for i in range(max(0, math.ceil((t_end - kappa_window) / kappa_step)))
+    ]
     kap: list[float] = []
     for c in names:
         ts, xs = jumps_of(jumps, c)
         kap += kappa_series(ts, xs, at, kappa_window)
     return ReplayResult(
-        h=float(deadband), jumps=jumps, cycles=cycles,
-        volume=sum(abs(j.delta) for j in jumps), bound=bound, observed_variation=var,
-        deficit_integral=deficit_sum, deficit_share=above / (n * len(names)),
-        kappa_median=statistics.median(kap) if kap else 0.0)
+        h=float(deadband),
+        jumps=jumps,
+        cycles=cycles,
+        volume=sum(abs(j.delta) for j in jumps),
+        bound=bound,
+        observed_variation=var,
+        deficit_integral=deficit_sum,
+        deficit_share=above / (n * len(names)),
+        kappa_median=statistics.median(kap) if kap else 0.0,
+    )
 
 
-def deadband_sweep(demand: Mapping[Any, Sequence[float]], dt: float,
-                   deadbands: Iterable[float], **kwargs: float) -> list[ReplayResult]:
+def deadband_sweep(
+    demand: Mapping[Any, Sequence[float]], dt: float, deadbands: Iterable[float], **kwargs: float
+) -> list[ReplayResult]:
     """:func:`replay_reserve` for every dead band in ``deadbands``."""
     return [replay_reserve(demand, dt, deadband=h, **kwargs) for h in deadbands]
 
 
-def choose_deadband(results: Iterable[ReplayResult | Mapping[str, float]],
-                    kappa_target: float = 0.5) -> float | None:
+def choose_deadband(
+    results: Iterable[ReplayResult | Mapping[str, float]], kappa_target: float = 0.5
+) -> float | None:
     """Smallest dead band whose median oscillation index does not exceed the target."""
     ok = []
     for r in results:
-        h, k = (r.h, r.kappa_median) if isinstance(r, ReplayResult) else \
-            (r["h"], r["kappa_median"])
+        h, k = (r.h, r.kappa_median) if isinstance(r, ReplayResult) else (r["h"], r["kappa_median"])
         if k <= kappa_target:
             ok.append(h)
     return min(ok) if ok else None

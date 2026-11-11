@@ -4,7 +4,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from jordanplan import (
+from deberka_jordan import (
     POOL,
     is_safe,
     jordan_plan,
@@ -43,7 +43,8 @@ def test_plan_matches_measure():
 
 def test_deadband_force_and_bounds():
     p = jordan_plan(CUR, NEW, 100.0, deadband=64.0)
-    assert "vm3" not in p.recipients and p.skipped == {"vm3": 30.0}
+    assert "vm3" not in p.recipients
+    assert p.skipped == {"vm3": 30.0}
     p = jordan_plan(CUR, NEW, 100.0, deadband=64.0, force={"vm3"})
     assert p.recipients["vm3"] == pytest.approx(30.0)
     p = jordan_plan(CUR, NEW, 100.0, floor={"vm2": 2900.0}, ceiling={"vm1": 2100.0})
@@ -59,8 +60,7 @@ def test_invalid_arguments():
 
 
 def test_rationing():
-    got = ration({"a": 300.0, "b": 300.0, "c": 300.0}, 500.0,
-                 priority={"a": 50, "b": -10, "c": 5})
+    got = ration({"a": 300.0, "b": 300.0, "c": 300.0}, 500.0, priority={"a": 50, "b": -10, "c": 5})
     assert got == {"b": 300.0, "c": 200.0}
     prop = ration({"a": 300.0, "b": 100.0}, 200.0)
     assert prop == pytest.approx({"a": 150.0, "b": 50.0})
@@ -75,6 +75,7 @@ def test_plan_rations_when_pool_is_short():
 
 
 # Claim 1 --------------------------------------------------------------------
+
 
 @given(transfers)
 def test_claim1_netting_never_exceeds_sequential(ts):
@@ -95,20 +96,31 @@ def test_claim1_any_execution_is_at_least_the_bound(ts):
 
 
 def test_netting_by_cycle():
-    log = [(1, "a", "b", 100.0), (1, "b", "c", 100.0),   # b is a transit node
-           (2, "a", "b", 50.0), (2, "b", "a", 50.0),     # opposite proposals
-           (3, "a", "c", 64.0)]
+    log = [
+        (1, "a", "b", 100.0),
+        (1, "b", "c", 100.0),  # b is a transit node
+        (2, "a", "b", 50.0),
+        (2, "b", "a", 50.0),  # opposite proposals
+        (3, "a", "c", 64.0),
+    ]
     rows = {r.cycle: r for r in netting_by_cycle(log)}
-    assert rows[1].sequential_volume == 400.0 and rows[1].jordan_volume == 200.0
+    assert rows[1].sequential_volume == 400.0
+    assert rows[1].jordan_volume == 200.0
     assert rows[1].gain == pytest.approx(0.5)
-    assert rows[2].jordan_volume == 0.0 and rows[2].ratio == 0.0
+    assert rows[2].jordan_volume == 0.0
+    assert rows[2].ratio == 0.0
     assert rows[3].ratio == 1.0
 
 
 # Claim 2 --------------------------------------------------------------------
 
-@given(shares, st.floats(0.0, 1e4, allow_nan=False), st.randoms(use_true_random=False),
-       st.floats(0.0, 500.0))
+
+@given(
+    shares,
+    st.floats(0.0, 1e4, allow_nan=False),
+    st.randoms(use_true_random=False),
+    st.floats(0.0, 500.0),
+)
 def test_claim2_two_phase_never_overdraws(cur, pool, rnd, h):
     new = {c: max(0.0, a + rnd.uniform(-5e3, 5e3)) for c, a in cur.items()}
     p = jordan_plan(cur, new, pool, deadband=h)

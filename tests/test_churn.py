@@ -5,7 +5,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from jordanplan import (
+from deberka_jordan import (
     choose_deadband,
     cycles_bound,
     deadband_sweep,
@@ -62,7 +62,8 @@ def test_sweep_monotone_and_choice():
     assert res[-1].volume < res[0].volume
     assert res[0].kappa_median > res[-1].kappa_median
     h = choose_deadband(res, 0.5)
-    assert h is not None and h > 0
+    assert h is not None
+    assert h > 0
     assert choose_deadband([{"h": 0, "kappa_median": 0.9}], 0.5) is None
 
 

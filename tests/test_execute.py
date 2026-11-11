@@ -1,7 +1,13 @@
 import pytest
 
-from jordanplan import Backend, RateLimitedSim, execute_simultaneous, execute_two_phase, jordan_plan
-from jordanplan.kvm import LibvirtBackend, host_mem_available
+from deberka_jordan import (
+    Backend,
+    RateLimitedSim,
+    execute_simultaneous,
+    execute_two_phase,
+    jordan_plan,
+)
+from deberka_jordan.kvm import LibvirtBackend, host_mem_available
 
 CUR = {"vm1": 2000.0, "vm2": 3000.0, "vm3": 1500.0, "vm4": 2500.0}
 NEW = {"vm1": 2800.0, "vm2": 2200.0}
@@ -15,9 +21,11 @@ def test_two_phase_keeps_pool_and_reaches_targets():
     p = jordan_plan(CUR, NEW, pool_free=0.0)
     sim = RateLimitedSim(CUR, 0.0, take_rate=200.0, give_rate=800.0)
     rep = execute_two_phase(sim, p, CUR, timeout_s=30.0)
-    assert rep.pool_min is not None and rep.pool_min >= -1.0
+    assert rep.pool_min is not None
+    assert rep.pool_min >= -1.0
     assert rep.given["vm1"] == pytest.approx(800.0, abs=1.0)
-    assert not rep.unfinished and not rep.rationed
+    assert not rep.unfinished
+    assert not rep.rationed
     # 800 MiB at 200 MiB/s, then 800 MiB at 800 MiB/s
     assert rep.duration_s == pytest.approx(5.0, abs=0.3)
 
@@ -28,7 +36,8 @@ def test_two_phase_uses_actually_freed_memory():
     rep = execute_two_phase(sim, p, CUR, timeout_s=10.0)
     assert rep.freed["vm2"] == pytest.approx(500.0, abs=1.0)
     assert rep.given["vm1"] == pytest.approx(500.0, abs=1.0)
-    assert rep.rationed and "vm2" in rep.unfinished
+    assert rep.rationed
+    assert "vm2" in rep.unfinished
     assert sim.pool_min >= -1.0
 
 
@@ -36,7 +45,8 @@ def test_simultaneous_overdraws():
     p = jordan_plan(CUR, NEW, pool_free=0.0)
     sim = RateLimitedSim(CUR, 0.0)
     rep = execute_simultaneous(sim, p, CUR, timeout_s=10.0)
-    assert rep.pool_min is not None and rep.pool_min < -100.0
+    assert rep.pool_min is not None
+    assert rep.pool_min < -100.0
 
 
 def test_sim_validation():

@@ -1,6 +1,6 @@
 import json
 
-from jordanplan.cli import main
+from deberka_jordan.cli import main
 
 
 def test_plan(tmp_path, capsys):
@@ -27,8 +27,9 @@ def test_net(tmp_path, capsys):
 
 def test_deadband(tmp_path, capsys):
     f = tmp_path / "trace.csv"
-    rows = ["t_s,vm1,vm2"] + [f"{k},{1000 + (k % 7) * 30},{2000 - (k % 5) * 50}"
-                              for k in range(300)]
+    rows = ["t_s,vm1,vm2"] + [
+        f"{k},{1000 + (k % 7) * 30},{2000 - (k % 5) * 50}" for k in range(300)
+    ]
     f.write_text("\n".join(rows) + "\n")
     out_csv = tmp_path / "db.csv"
     assert main(["deadband", str(f), "--h", "0,64,128", "--out", str(out_csv)]) == 0

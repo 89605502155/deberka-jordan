@@ -2,10 +2,11 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from jordanplan import POOL, SignedMeasure
+from deberka_jordan import POOL, SignedMeasure
 
-atoms = st.dictionaries(st.sampled_from("abcdefgh"),
-                        st.floats(-1e4, 1e4, allow_nan=False), max_size=8)
+atoms = st.dictionaries(
+    st.sampled_from("abcdefgh"), st.floats(-1e4, 1e4, allow_nan=False), max_size=8
+)
 
 
 def test_from_allocations_closes_with_pool():
@@ -40,10 +41,12 @@ def test_jordan_and_hahn_properties(d):
     h = nu.hahn()
     # nu = nu+ - nu-, both parts non-negative and mutually singular
     assert dict(j.plus - j.minus) == pytest.approx(dict(nu))
-    assert all(v > 0 for v in j.plus.values()) and all(v > 0 for v in j.minus.values())
+    assert all(v > 0 for v in j.plus.values())
+    assert all(v > 0 for v in j.minus.values())
     assert not set(j.plus) & set(j.minus)
     # Hahn sets carry the parts
-    assert set(j.plus) == h.positive and set(j.minus) == h.negative
+    assert set(j.plus) == h.positive
+    assert set(j.minus) == h.negative
     assert nu(h.positive) == pytest.approx(j.plus.total())
     assert nu(h.negative) == pytest.approx(-j.minus.total())
     # |nu|(X) = nu+(X) + nu-(X)

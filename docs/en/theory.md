@@ -33,6 +33,18 @@ The volume of the plan is `Plan.volume = Σ |ν({i})|`. The volume of executing
 the proposals one by one is `2 Σ amount`, so the gain is `1 − W / W_seq`
 (`netting_report`).
 
+### Why the factor is 2
+
+A byte moved from a donor to a recipient is two balloon operations: the donor's
+balloon deflates (it releases the byte) and the recipient's balloon inflates (it
+takes the byte). A proposal executed on its own therefore costs 2 per byte, and
+the default `factor` is 2. `factor=1` counts each transferred byte once. The
+factor only sets the unit: it scales the sequential and the Jordan volume alike
+(`plan_volume` and `netting_report` use `(factor / 2) Σ |net|` for the plan), so
+the gain `1 − W / W_seq` does not depend on it. A plan that leaves the pool
+unchanged moves `Σ |net| / 2` bytes, so its volume is `factor` times the bytes moved.
+
+
 ## 3. Claim 2.2: the safe order (elementary)
 
 Let the pool be non-negative before and after the cycle. Execute all donors

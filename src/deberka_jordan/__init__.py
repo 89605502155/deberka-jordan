@@ -48,6 +48,7 @@ from .plan import (
     net_transfers,
     netting_by_cycle,
     netting_report,
+    plan_volume,
     ration,
     sequential_volume,
 )
@@ -89,6 +90,7 @@ __all__ = [
     "netting_by_cycle",
     "netting_report",
     "pairwise",
+    "plan_volume",
     "pool_trajectory",
     "ration",
     "recipients_first",

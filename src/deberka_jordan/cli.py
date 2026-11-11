@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import statistics
 import sys
 from collections.abc import Sequence
@@ -19,11 +20,24 @@ from . import __version__
 from .churn import choose_deadband, deadband_sweep
 from .csvio import read_proposals, read_state, read_trace, write_rows
 from .order import min_pool, recipients_first, two_phase
-from .plan import jordan_plan, netting_by_cycle
+from .plan import jordan_plan, netting_by_cycle, plan_volume
 
 
 def _floats(text: str) -> list[float]:
     return [float(x) for x in text.split(",") if x.strip()]
+
+
+def _factor(text: str) -> float:
+    """Argparse type of ``--factor``: a finite positive number."""
+    try:
+        value = float(text)
+    except ValueError:
+        msg = f"factor must be a number, got {text!r}"
+        raise argparse.ArgumentTypeError(msg) from None
+    if not math.isfinite(value) or value <= 0.0:
+        msg = f"factor must be finite and positive, got {text!r}"
+        raise argparse.ArgumentTypeError(msg)
+    return value
 
 
 def _cmd_plan(args: argparse.Namespace) -> int:
@@ -35,7 +49,8 @@ def _cmd_plan(args: argparse.Namespace) -> int:
         "skipped": p.skipped,
         "take": p.take,
         "give": p.give,
-        "volume": p.volume,
+        "volume": plan_volume(p, factor=args.factor),
+        "volume_factor": args.factor,
         "pool_before": p.pool_before,
         "pool_peak": p.peak,
         "pool_after": p.pool_after,
@@ -51,7 +66,7 @@ def _cmd_plan(args: argparse.Namespace) -> int:
 
 
 def _cmd_net(args: argparse.Namespace) -> int:
-    reps = netting_by_cycle(read_proposals(args.log))
+    reps = netting_by_cycle(read_proposals(args.log), factor=args.factor)
     rows = [
         {
             "cycle": r.cycle,
@@ -72,6 +87,7 @@ def _cmd_net(args: argparse.Namespace) -> int:
         "sequential_volume": seq,
         "jordan_volume": jor,
         "overall_gain": 1.0 - jor / seq if seq else 0.0,
+        "volume_factor": args.factor,
         "median_ratio": statistics.median(ratios) if ratios else None,
     }
     json.dump(summary, sys.stdout, indent=2)
@@ -122,6 +138,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("state")
     p.add_argument("--pool", type=float, required=True, help="free pool before the cycle")
     p.add_argument("--deadband", type=float, default=0.0)
+    p.add_argument(
+        "--factor",
+        type=_factor,
+        default=2.0,
+        help="balloon operations per byte moved between consumers (default 2)",
+    )
     p.set_defaults(func=_cmd_plan)
 
     p = sub.add_parser(
@@ -129,6 +151,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     p.add_argument("log")
     p.add_argument("--out", help="per-cycle CSV")
+    p.add_argument(
+        "--factor",
+        type=_factor,
+        default=2.0,
+        help="balloon operations per byte moved between consumers (default 2)",
+    )
     p.set_defaults(func=_cmd_net)
 
     p = sub.add_parser("deadband", help="dead band sweep on a demand trace (t_s,<consumers>)")

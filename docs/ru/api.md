@@ -32,10 +32,11 @@ ceiling=None, priority=None) -> Plan`
 |---|---|
 | `ration(demand, budget, priority=None)` | Делит недостаточный бюджет пропорционально или по приоритету |
 | `net_transfers(transfers)` | Свёрнутая мера по потребителям |
-| `sequential_volume(transfers)` | `2 Σ amount` |
+| `sequential_volume(transfers, *, factor=2.0)` | `factor · Σ amount`; по умолчанию `2 Σ amount` |
 | `lower_bound_volume(nu, pool=POOL)` | `W = Σ |ν({i})|` по потребителям |
-| `netting_report(transfers, cycle=None)` | `NettingReport` с `ratio` и `gain` |
-| `netting_by_cycle(rows)` | Отчёт по каждому циклу строк `(cycle, source, recipient, amount)` |
+| `netting_report(transfers, cycle=None, *, factor=2.0)` | `NettingReport` с `ratio` и `gain`; жорданов объём равен `(factor / 2) Σ |чистое|`, выигрыш от `factor` не зависит |
+| `plan_volume(plan, *, factor=2.0)` | `(factor / 2) Σ |ν({i})|` по потребителям; по умолчанию равен `plan.volume` |
+| `netting_by_cycle(rows, *, factor=2.0)` | Отчёт по каждому циклу строк `(cycle, source, recipient, amount)` |
 
 ## Порядки (`deberka_jordan.order`)
 

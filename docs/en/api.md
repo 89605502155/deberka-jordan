@@ -32,10 +32,11 @@ properties `take`, `give`, `pool_change`, `pool_after`, `volume`, `peak`,
 |---|---|
 | `ration(demand, budget, priority=None)` | Split an insufficient budget, in proportion or by priority |
 | `net_transfers(transfers)` | Netted measure over consumers |
-| `sequential_volume(transfers)` | `2 Σ amount` |
+| `sequential_volume(transfers, *, factor=2.0)` | `factor · Σ amount`; the default is `2 Σ amount` |
 | `lower_bound_volume(nu, pool=POOL)` | `W = Σ |ν({i})|` over consumers |
-| `netting_report(transfers, cycle=None)` | `NettingReport` with `ratio` and `gain` |
-| `netting_by_cycle(rows)` | One report per cycle of `(cycle, source, recipient, amount)` rows |
+| `netting_report(transfers, cycle=None, *, factor=2.0)` | `NettingReport` with `ratio` and `gain`; the Jordan volume is `(factor / 2) Σ |net|`, the gain does not depend on `factor` |
+| `plan_volume(plan, *, factor=2.0)` | `(factor / 2) Σ |ν({i})|` over consumers; `plan.volume` is the default |
+| `netting_by_cycle(rows, *, factor=2.0)` | One report per cycle of `(cycle, source, recipient, amount)` rows |
 
 ## Orders (`deberka_jordan.order`)
 

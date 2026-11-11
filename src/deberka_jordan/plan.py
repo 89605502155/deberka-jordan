@@ -9,6 +9,8 @@ per consumer and executes only the net change.
 
 from __future__ import annotations
 
+import math
+import numbers
 from collections.abc import Hashable, Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Generic, NamedTuple, TypeVar
@@ -64,7 +66,10 @@ class Plan(Generic[K]):
 
     @property
     def volume(self) -> float:
-        """Volume of operations ``sum |nu({i})|`` over consumers (Claim 1)."""
+        """Volume of operations ``sum |nu({i})|`` over consumers (Claim 1).
+
+        This is :func:`plan_volume` with the default ``factor=2``.
+        """
         return self.take + self.give
 
     @property
@@ -177,9 +182,46 @@ def net_transfers(transfers: Iterable[tuple[K, K, float]]) -> SignedMeasure[K]:
     return SignedMeasure.from_transfers(transfers)
 
 
-def sequential_volume(transfers: Iterable[tuple[K, K, float]]) -> float:
-    """Volume when every proposal is executed on its own (take + give)."""
-    return 2.0 * sum(float(amount) for _, _, amount in transfers)
+def _check_factor(factor: object) -> float:
+    """Return the volume factor as a float, or raise.
+
+    The factor is the number of balloon operations per byte moved between two
+    consumers. It must be a real number, finite and positive: a bool, a string
+    or ``None`` raises ``TypeError``; zero, a negative or non-finite value
+    raises ``ValueError``.
+    """
+    if isinstance(factor, bool) or not isinstance(factor, numbers.Real):
+        msg = f"factor must be a real number, got {type(factor).__name__} {factor!r}"
+        raise TypeError(msg)
+    value = float(factor)
+    if not math.isfinite(value) or value <= 0.0:
+        msg = f"factor must be finite and positive, got {value!r}"
+        raise ValueError(msg)
+    return value
+
+
+def plan_volume(plan: Plan[Any], *, factor: float = 2.0) -> float:
+    """Volume of a plan in units of ``factor`` per byte moved between consumers.
+
+    It equals ``(factor / 2) * sum |nu({i})|`` over consumers. With the default
+    ``factor=2`` this is ``plan.volume``; with ``factor=1`` every byte moved
+    between two consumers counts once. The pool atom is excluded, as in
+    Claim 1. Bytes that a plan moves into or out of the free pool are counted
+    once per consumer operation, so for a plan that leaves the pool unchanged
+    this is exactly ``factor`` times the bytes moved.
+    """
+    return _check_factor(factor) / 2.0 * plan.volume
+
+
+def sequential_volume(transfers: Iterable[tuple[K, K, float]], *, factor: float = 2.0) -> float:
+    """Volume when every proposal is executed on its own: ``factor * sum amount``.
+
+    Each transfer is one balloon deflation at the donor and one inflation at
+    the recipient, that is two operations per byte, so the default is 2.
+    Use ``factor=1`` to count each transferred byte once.
+    """
+    value = _check_factor(factor)
+    return value * sum(float(amount) for _, _, amount in transfers)
 
 
 def lower_bound_volume(nu: Mapping[Any, float], pool: Hashable | None = POOL) -> float:
@@ -208,18 +250,31 @@ class NettingReport:
 
 
 def netting_report(
-    transfers: Iterable[tuple[K, K, float]], cycle: Hashable = None
+    transfers: Iterable[tuple[K, K, float]], cycle: Hashable = None, *, factor: float = 2.0
 ) -> NettingReport:
-    """Netting gain for the transfers of one cycle."""
+    """Netting gain for the transfers of one cycle.
+
+    Both volumes are in units of ``factor`` per byte moved between consumers
+    (default 2, see :func:`sequential_volume`). The Jordan volume is
+    ``(factor / 2) * sum |net change|``. The gain does not depend on ``factor``.
+    """
+    value = _check_factor(factor)
     ts = list(transfers)
+    net = lower_bound_volume(net_transfers(ts), pool=None)
     return NettingReport(
-        cycle, len(ts), sequential_volume(ts), lower_bound_volume(net_transfers(ts), pool=None)
+        cycle,
+        len(ts),
+        sequential_volume(ts, factor=value),
+        value / 2.0 * net,
     )
 
 
-def netting_by_cycle(rows: Iterable[tuple[Hashable, K, K, float]]) -> list[NettingReport]:
+def netting_by_cycle(
+    rows: Iterable[tuple[Hashable, K, K, float]], *, factor: float = 2.0
+) -> list[NettingReport]:
     """Netting gain per cycle for a proposal log ``(cycle, source, recipient, amount)``."""
+    value = _check_factor(factor)
     cycles: dict[Hashable, list[tuple[K, K, float]]] = {}
     for cycle, source, recipient, amount in rows:
         cycles.setdefault(cycle, []).append((source, recipient, float(amount)))
-    return [netting_report(ts, cycle) for cycle, ts in cycles.items()]
+    return [netting_report(ts, cycle, factor=value) for cycle, ts in cycles.items()]

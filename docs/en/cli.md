@@ -20,6 +20,7 @@ and `phase2`.
 |---|---|---|
 | `--pool` | free pool before the cycle, MiB | required |
 | `--deadband` | changes below this size are skipped, MiB | 0 |
+| `--factor` | balloon operations per byte moved between consumers; `volume` scales with it | 2 |
 
 ## `net`
 
@@ -29,7 +30,8 @@ Netting gain per cycle for a proposal log with the columns
     deberka-jordan net proposals.csv --out netting.csv
 
 Prints a summary JSON: number of cycles, sequential and Jordan volumes, the overall
-gain and the median ratio. `--out` writes one row per cycle.
+gain and the median ratio. `--out` writes one row per cycle. `--factor` (default 2)
+sets the unit of both volumes; the gain does not change (see the theory, section 2).
 
 ## `deadband`
 

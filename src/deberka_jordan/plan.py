@@ -65,12 +65,23 @@ class Plan(Generic[K]):
         return self.pool_before + self.pool_change
 
     @property
-    def volume(self) -> float:
-        """Volume of operations ``sum |nu({i})|`` over consumers (Claim 1).
+    def operations(self) -> float:
+        """Balloon operations ``sum |nu({i})|`` over consumers (Claim 1, factor 2).
 
-        This is :func:`plan_volume` with the default ``factor=2``.
+        Each byte moved between two consumers is one deflation and one inflation,
+        so this is :func:`plan_volume` with ``factor=2``.
         """
         return self.take + self.give
+
+    @property
+    def volume(self) -> float:
+        """Bytes moved by the plan, the default of :func:`plan_volume` (factor 1).
+
+        Equal to ``operations / 2``. For a plan that leaves the pool unchanged this
+        is exactly the bytes moved between consumers; for a plan that changes the
+        pool see :func:`plan_volume`.
+        """
+        return self.operations / 2.0
 
     @property
     def peak(self) -> float:
@@ -185,8 +196,9 @@ def net_transfers(transfers: Iterable[tuple[K, K, float]]) -> SignedMeasure[K]:
 def _check_factor(factor: object) -> float:
     """Return the volume factor as a float, or raise.
 
-    The factor is the number of balloon operations per byte moved between two
-    consumers. It must be a real number, finite and positive: a bool, a string
+    The factor is the number of units per byte moved between two consumers:
+    1 for bytes (default), 2 for balloon operations. It must be a real number,
+    finite and positive: a bool, a string
     or ``None`` raises ``TypeError``; zero, a negative or non-finite value
     raises ``ValueError``.
     """
@@ -200,32 +212,38 @@ def _check_factor(factor: object) -> float:
     return value
 
 
-def plan_volume(plan: Plan[Any], *, factor: float = 2.0) -> float:
+def plan_volume(plan: Plan[Any], *, factor: float = 1.0) -> float:
     """Volume of a plan in units of ``factor`` per byte moved between consumers.
 
-    It equals ``(factor / 2) * sum |nu({i})|`` over consumers. With the default
-    ``factor=2`` this is ``plan.volume``; with ``factor=1`` every byte moved
-    between two consumers counts once. The pool atom is excluded, as in
-    Claim 1. Bytes that a plan moves into or out of the free pool are counted
-    once per consumer operation, so for a plan that leaves the pool unchanged
-    this is exactly ``factor`` times the bytes moved.
+    It equals ``(factor / 2) * sum |nu({i})|`` over consumers (``plan.operations``).
+    The default ``factor=1`` counts each byte moved between two consumers once,
+    so it equals ``plan.volume`` (bytes). ``factor=2`` gives the balloon
+    operations of Claim 1. The pool atom is excluded, as in Claim 1. For a plan
+    that leaves the pool unchanged the result is exactly ``factor`` times the
+    bytes moved. A byte moved into or out of the pool counts as one balloon
+    operation, that is half a byte at ``factor=1``, so for a plan that changes
+    the pool the result is not the number of bytes moved (open point 2 in the
+    article notes).
     """
-    return _check_factor(factor) / 2.0 * plan.volume
+    return _check_factor(factor) / 2.0 * plan.operations
 
 
-def sequential_volume(transfers: Iterable[tuple[K, K, float]], *, factor: float = 2.0) -> float:
+def sequential_volume(transfers: Iterable[tuple[K, K, float]], *, factor: float = 1.0) -> float:
     """Volume when every proposal is executed on its own: ``factor * sum amount``.
 
-    Each transfer is one balloon deflation at the donor and one inflation at
-    the recipient, that is two operations per byte, so the default is 2.
-    Use ``factor=1`` to count each transferred byte once.
+    The default ``factor=1`` gives the bytes transferred. Each transfer is also
+    one balloon deflation at the donor and one inflation at the recipient, two
+    balloon operations per byte: ``factor=2`` gives those operations.
     """
     value = _check_factor(factor)
     return value * sum(float(amount) for _, _, amount in transfers)
 
 
 def lower_bound_volume(nu: Mapping[Any, float], pool: Hashable | None = POOL) -> float:
-    """``W = sum |nu({i})|`` over consumers (the pool atom is excluded)."""
+    """``W = sum |nu({i})|`` over consumers: balloon operations (factor 2).
+
+    The pool atom is excluded. In bytes (the default unit) the bound is ``W / 2``.
+    """
     return sum(abs(x) for c, x in nu.items() if c != pool)
 
 
@@ -250,13 +268,14 @@ class NettingReport:
 
 
 def netting_report(
-    transfers: Iterable[tuple[K, K, float]], cycle: Hashable = None, *, factor: float = 2.0
+    transfers: Iterable[tuple[K, K, float]], cycle: Hashable = None, *, factor: float = 1.0
 ) -> NettingReport:
     """Netting gain for the transfers of one cycle.
 
     Both volumes are in units of ``factor`` per byte moved between consumers
-    (default 2, see :func:`sequential_volume`). The Jordan volume is
-    ``(factor / 2) * sum |net change|``. The gain does not depend on ``factor``.
+    (default 1: bytes; 2: balloon operations, see :func:`sequential_volume`).
+    The Jordan volume is ``(factor / 2) * sum |net change|``. The gain does not
+    depend on ``factor``.
     """
     value = _check_factor(factor)
     ts = list(transfers)
@@ -270,7 +289,7 @@ def netting_report(
 
 
 def netting_by_cycle(
-    rows: Iterable[tuple[Hashable, K, K, float]], *, factor: float = 2.0
+    rows: Iterable[tuple[Hashable, K, K, float]], *, factor: float = 1.0
 ) -> list[NettingReport]:
     """Netting gain per cycle for a proposal log ``(cycle, source, recipient, amount)``."""
     value = _check_factor(factor)

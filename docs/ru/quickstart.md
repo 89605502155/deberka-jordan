@@ -23,7 +23,7 @@ target = {"vm1": 2600.0, "vm2": 2500.0, "vm3": 1530.0, "vm4": 2100.0}
 plan = jordan_plan(current, target, pool_free=100.0, deadband=64.0)
 print(plan.donors, plan.recipients)  # кто отдаёт и кто получает, МиБ
 print(plan.skipped)  # изменения меньше порога нечувствительности
-print(plan.volume)  # 1500.0: объём операций плана
+print(plan.volume)  # 750.0: байты, перенесённые планом
 print(min_pool(two_phase(plan), 100.0))  # 100.0: безопасный порядок
 print(min_pool(recipients_first(plan), 100.0))  # -500.0: небезопасный порядок
 ```
@@ -35,7 +35,7 @@ from deberka_jordan import netting_report
 
 proposals = [("vm1", "vm2", 300.0), ("vm2", "vm3", 300.0), ("vm3", "vm1", 100.0)]
 report = netting_report(proposals)
-print(report.sequential_volume, report.jordan_volume)  # 1400.0 400.0
+print(report.sequential_volume, report.jordan_volume)  # 700.0 200.0: байты
 print(f"выигрыш {report.gain:.0%}")  # выигрыш 71%
 ```
 

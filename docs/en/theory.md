@@ -23,27 +23,31 @@ In the library: `SignedMeasure.hahn()`, `SignedMeasure.jordan()`.
 Any sequence of operations that moves the shares from `a` to `a'` has volume at
 least
 
-    W = Σ_{i ≥ 1} |a'_i − a_i|.
+    W = Σ_{i ≥ 1} |a'_i − a_i|    (balloon operations, factor 2)
 
 Proof: for each consumer the volume of its operations is at least the absolute
 value of its net change, by the triangle inequality. The bound is attained when
 every consumer only gives or only receives. The Jordan plan does exactly that: it
 nets all proposals of the cycle per consumer and executes only the net change.
-The volume of the plan is `Plan.volume = Σ |ν({i})|`. The volume of executing
-the proposals one by one is `2 Σ amount`, so the gain is `1 − W / W_seq`
-(`netting_report`).
+The plan has `Plan.operations = Σ |ν({i})|` balloon operations; in bytes, the
+default unit, its volume is `Plan.volume = Σ |ν({i})| / 2`. The proposals executed
+one by one cost `2 Σ amount` operations, that is `Σ amount` bytes, so the gain is
+`1 − W / W_seq` (`netting_report`).
 
-### Why the factor is 2
+### The unit: bytes by default
 
 A byte moved from a donor to a recipient is two balloon operations: the donor's
 balloon deflates (it releases the byte) and the recipient's balloon inflates (it
-takes the byte). A proposal executed on its own therefore costs 2 per byte, and
-the default `factor` is 2. `factor=1` counts each transferred byte once. The
-factor only sets the unit: it scales the sequential and the Jordan volume alike
-(`plan_volume` and `netting_report` use `(factor / 2) Σ |net|` for the plan), so
-the gain `1 − W / W_seq` does not depend on it. A plan that leaves the pool
-unchanged moves `Σ |net| / 2` bytes, so its volume is `factor` times the bytes moved.
-
+takes the byte). The volume is reported in bytes by default (`factor=1`, each
+transferred byte counted once). `factor=2` gives the balloon operations, the unit
+of `W` as first stated. The factor only sets the unit: it scales the sequential
+and the Jordan volume alike (`plan_volume` and `netting_report` use
+`(factor / 2) Σ |net|`), so the gain `1 − W / W_seq` does not depend on it. A plan
+that leaves the pool unchanged moves `Σ |net| / 2` bytes, so its volume in bytes is
+exactly `Σ |ν| / 2`. A byte moved into or out of the pool counts as one balloon
+operation, that is half a byte at `factor=1`; for a plan that changes the pool the
+bytes volume is therefore not the number of bytes moved (open point 2 of the
+article notes).
 
 ## 3. Claim 2.2: the safe order (elementary)
 

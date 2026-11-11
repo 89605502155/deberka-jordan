@@ -25,18 +25,18 @@
 ceiling=None, priority=None) -> Plan`
 
 План содержит `donors`, `recipients`, `skipped`, `rationed`, `pool_before` и свойства
-`take`, `give`, `pool_change`, `pool_after`, `volume`, `peak`, `is_empty`, а также методы
+`take`, `give`, `pool_change`, `pool_after`, `volume` (байты), `operations` (балонные операции), `peak`, `is_empty`, а также методы
 `measure(pool)` и `targets(current)`.
 
 | Функция | Смысл |
 |---|---|
 | `ration(demand, budget, priority=None)` | Делит недостаточный бюджет пропорционально или по приоритету |
 | `net_transfers(transfers)` | Свёрнутая мера по потребителям |
-| `sequential_volume(transfers, *, factor=2.0)` | `factor · Σ amount`; по умолчанию `2 Σ amount` |
-| `lower_bound_volume(nu, pool=POOL)` | `W = Σ |ν({i})|` по потребителям |
-| `netting_report(transfers, cycle=None, *, factor=2.0)` | `NettingReport` с `ratio` и `gain`; жорданов объём равен `(factor / 2) Σ |чистое|`, выигрыш от `factor` не зависит |
-| `plan_volume(plan, *, factor=2.0)` | `(factor / 2) Σ |ν({i})|` по потребителям; по умолчанию равен `plan.volume` |
-| `netting_by_cycle(rows, *, factor=2.0)` | Отчёт по каждому циклу строк `(cycle, source, recipient, amount)` |
+| `sequential_volume(transfers, *, factor=1.0)` | `factor · Σ amount`; по умолчанию `factor=1` дает перенесённые байты, `factor=2` — балонные операции |
+| `lower_bound_volume(nu, pool=POOL)` | `W = Σ |ν({i})|` по потребителям: балонные операции; в байтах `W / 2` |
+| `netting_report(transfers, cycle=None, *, factor=1.0)` | `NettingReport` с `ratio` и `gain`; жорданов объём равен `(factor / 2) Σ |чистое|`, выигрыш от `factor` не зависит |
+| `plan_volume(plan, *, factor=1.0)` | `(factor / 2) Σ |ν({i})|` по потребителям; по умолчанию равен `plan.volume` (байты), `factor=2` даёт `plan.operations` |
+| `netting_by_cycle(rows, *, factor=1.0)` | Отчёт по каждому циклу строк `(cycle, source, recipient, amount)` |
 
 ## Порядки (`deberka_jordan.order`)
 

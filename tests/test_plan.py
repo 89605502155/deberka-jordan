@@ -37,7 +37,8 @@ def test_plan_matches_measure():
     nu = p.measure()
     assert nu.total() == pytest.approx(0.0)
     assert nu[POOL] == pytest.approx(p.pool_change)
-    assert p.volume == pytest.approx(lower_bound_volume(nu))
+    assert p.operations == pytest.approx(lower_bound_volume(nu))
+    assert p.volume == pytest.approx(lower_bound_volume(nu) / 2)
     assert p.targets(CUR) == pytest.approx(NEW)
 
 
@@ -79,7 +80,8 @@ def test_plan_rations_when_pool_is_short():
 
 @given(transfers)
 def test_claim1_netting_never_exceeds_sequential(ts):
-    assert lower_bound_volume(net_transfers(ts)) <= sequential_volume(ts) + 1e-6
+    # both sides in balloon operations (factor 2)
+    assert lower_bound_volume(net_transfers(ts)) <= sequential_volume(ts, factor=2.0) + 1e-6
 
 
 @given(transfers)
@@ -103,7 +105,7 @@ def test_netting_by_cycle():
         (2, "b", "a", 50.0),  # opposite proposals
         (3, "a", "c", 64.0),
     ]
-    rows = {r.cycle: r for r in netting_by_cycle(log)}
+    rows = {r.cycle: r for r in netting_by_cycle(log, factor=2.0)}
     assert rows[1].sequential_volume == 400.0
     assert rows[1].jordan_volume == 200.0
     assert rows[1].gain == pytest.approx(0.5)

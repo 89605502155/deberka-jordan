@@ -25,18 +25,18 @@ must be consistent; the examples use MiB.
 ceiling=None, priority=None) -> Plan`
 
 The plan has `donors`, `recipients`, `skipped`, `rationed`, `pool_before` and the
-properties `take`, `give`, `pool_change`, `pool_after`, `volume`, `peak`,
+properties `take`, `give`, `pool_change`, `pool_after`, `volume` (bytes), `operations` (balloon operations), `peak`,
 `is_empty`, and the methods `measure(pool)` and `targets(current)`.
 
 | Function | Meaning |
 |---|---|
 | `ration(demand, budget, priority=None)` | Split an insufficient budget, in proportion or by priority |
 | `net_transfers(transfers)` | Netted measure over consumers |
-| `sequential_volume(transfers, *, factor=2.0)` | `factor · Σ amount`; the default is `2 Σ amount` |
-| `lower_bound_volume(nu, pool=POOL)` | `W = Σ |ν({i})|` over consumers |
-| `netting_report(transfers, cycle=None, *, factor=2.0)` | `NettingReport` with `ratio` and `gain`; the Jordan volume is `(factor / 2) Σ |net|`, the gain does not depend on `factor` |
-| `plan_volume(plan, *, factor=2.0)` | `(factor / 2) Σ |ν({i})|` over consumers; `plan.volume` is the default |
-| `netting_by_cycle(rows, *, factor=2.0)` | One report per cycle of `(cycle, source, recipient, amount)` rows |
+| `sequential_volume(transfers, *, factor=1.0)` | `factor · Σ amount`; the default `factor=1` gives the bytes transferred, `factor=2` the balloon operations |
+| `lower_bound_volume(nu, pool=POOL)` | `W = Σ |ν({i})|` over consumers: balloon operations; in bytes `W / 2` |
+| `netting_report(transfers, cycle=None, *, factor=1.0)` | `NettingReport` with `ratio` and `gain`; the Jordan volume is `(factor / 2) Σ |net|`, the gain does not depend on `factor` |
+| `plan_volume(plan, *, factor=1.0)` | `(factor / 2) Σ |ν({i})|` over consumers; the default is `plan.volume` (bytes), `factor=2` is `plan.operations` |
+| `netting_by_cycle(rows, *, factor=1.0)` | One report per cycle of `(cycle, source, recipient, amount)` rows |
 
 ## Orders (`deberka_jordan.order`)
 

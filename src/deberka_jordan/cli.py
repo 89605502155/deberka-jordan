@@ -141,8 +141,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument(
         "--factor",
         type=_factor,
-        default=2.0,
-        help="balloon operations per byte moved between consumers (default 2)",
+        default=1.0,
+        help="volume unit: 1 = bytes moved between consumers (default), 2 = balloon operations",
     )
     p.set_defaults(func=_cmd_plan)
 
@@ -154,8 +154,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument(
         "--factor",
         type=_factor,
-        default=2.0,
-        help="balloon operations per byte moved between consumers (default 2)",
+        default=1.0,
+        help="volume unit: 1 = bytes moved between consumers (default), 2 = balloon operations",
     )
     p.set_defaults(func=_cmd_net)
 

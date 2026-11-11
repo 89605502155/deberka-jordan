@@ -12,7 +12,7 @@ computes:
 
 * the Hahn decomposition of the cycle: donors and recipients;
 * the Jordan plan, the netting of all proposals of a cycle with the least
-  volume of operations, `W = Σ |ν({i})|`;
+  volume of operations, `W = Σ |ν({i})|` (bytes moved: `W / 2`);
 * a safe two-phase order (donors first, then recipients) that never overdraws
   the pool, and an executor that waits for the memory actually freed;
 * the oscillation index `κ` of a controller on the time axis and a dead band `h`
@@ -52,12 +52,12 @@ print(nu.total(), nu.total_variation())  # 0.0 6.0
 current = {"vm1": 2000.0, "vm2": 3000.0, "vm3": 1500.0, "vm4": 2500.0}  # MiB
 target = {"vm1": 2600.0, "vm2": 2500.0, "vm3": 1530.0, "vm4": 2100.0}
 plan = jordan_plan(current, target, pool_free=100.0, deadband=64.0)
-print(plan.volume)  # 1500.0 MiB of operations
+print(plan.volume)  # 750.0 MiB moved (bytes, the default unit)
 print(min_pool(two_phase(plan), 100.0))  # 100.0: the pool never goes below its start
 print(min_pool(recipients_first(plan), 100.0))  # -500.0: the wrong order overdraws it
 
 report = netting_report([("vm1", "vm2", 300.0), ("vm2", "vm3", 300.0), ("vm3", "vm1", 100.0)])
-print(report.sequential_volume, report.jordan_volume)  # 1400.0 400.0
+print(report.sequential_volume, report.jordan_volume)  # 700.0 200.0 (bytes)
 ```
 
 Command line, on a state file with the columns `consumer,current,target`:

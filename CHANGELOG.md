@@ -14,10 +14,14 @@ built under the working name `jordanplan-deberka` (module `jordanplan`) and rena
 - Oscillation index, `replay_reserve`, `deadband_sweep`, `choose_deadband`.
 - Optional `deberka_jordan.kvm.LibvirtBackend`, tested with fake domains.
 - Command line tool `deberka_jordan`.
-- Volume factor (default 2): `sequential_volume`, `netting_report`, `netting_by_cycle`
-  take `factor`, and `plan_volume(plan, *, factor=2.0)` is the volume of a plan. A factor
-  of 2 is the balloon operations per byte moved between two consumers (a deflation at the
-  donor and an inflation at the recipient); `factor=1` counts each byte once. Must be
-  finite and positive (`ValueError`), a number (`TypeError`). The gain does not depend on it.
-- Command line `plan --factor` and `net --factor`; the JSON output adds `volume_factor`.
+- Volume unit (default 1, bytes): `sequential_volume`, `netting_report`, `netting_by_cycle`
+  take `factor`, and `plan_volume(plan, *, factor=1.0)` is the volume of a plan. The default
+  `factor=1` counts each byte moved between two consumers once; `factor=2` gives the balloon
+  operations (a deflation at the donor and an inflation at the recipient). Must be finite and
+  positive (`ValueError`), a number (`TypeError`). The gain does not depend on it.
+- `Plan.volume` is the bytes moved (`Plan.operations / 2`), equal to `plan_volume(plan)`;
+  `Plan.operations = Σ |ν({i})|` is the balloon-operation measure of Claim 1.
+  `lower_bound_volume` is that measure (operations).
+- Command line `plan --factor` and `net --factor` (default 1); the JSON output adds
+  `volume_factor`.
   The `deadband` volume is not scaled: a dead-band jump is one operation on one consumer.

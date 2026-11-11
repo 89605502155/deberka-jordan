@@ -1,12 +1,13 @@
 [project]
 name = "deberka-jordan"
-version = "0.1.0"
+version = "0.0.1"
 description = "Reallocation plans for a shared resource from the Hahn-Jordan decomposition: least-volume netting, a safe two-phase order, oscillation index and dead-band choice, with a libvirt balloon backend"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
     { name = "Andrey Ferubko", email = "ferubko1999@yandex.ru" },
+    { name = "Oleg Kazakov", email = "kazakov@bgitu.ru" },
 ]
 requires-python = ">=3.11"
 dependencies = []
@@ -119,7 +120,7 @@ allowed-confusables = ["ν", "α", "ρ", "σ", "γ", "ℓ", "×", "−", "–", 
     "RUF001", "RUF002", "RUF003",
 ]
 "examples/**" = ["D", "T20", "S101", "S311", "ARG002", "INP001"]
-"experiments/**" = ["D", "T20", "INP001", "ARG001", "ARG005", "S311"]  # heavy scripts, not run in CI
+"experiments/**" = ["D", "T20", "INP001", "ARG001", "ARG005", "S311"]  # heavy scripts, not in the test suite
 "scripts/**" = ["D", "T20", "INP001", "S603", "S607", "PTH123"]  # git calls
 "src/deberka_jordan/cli.py" = ["T20"]  # the command-line tool prints its report
 

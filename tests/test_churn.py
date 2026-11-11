@@ -54,8 +54,9 @@ def test_claim3_bounds(seed, h, stride):
     assert r.volume <= r.observed_variation + 1e-6
 
 
-def test_sweep_monotone_and_choice():
-    demand = {f"vm{i}": _random_walk(2000, 7 + i) for i in range(4)}
+@pytest.mark.parametrize("seed", [7, 11, 23])
+def test_sweep_monotone_and_choice(seed):
+    demand = {f"vm{i}": _random_walk(2000, seed + i) for i in range(4)}
     res = deadband_sweep(demand, 1.0, [0, 16, 64, 256], reserve=256.0, interval=2.0)
     assert math.isinf(res[0].bound)
     assert [r.cycles for r in res] == sorted((r.cycles for r in res), reverse=True)

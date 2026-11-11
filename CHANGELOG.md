@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0 — 2026-11-11
+## [0.0.1] — 2026-11-11
 
-First release: the reallocation plans of article 2 (A. Ferubko, BGITU). The project was
+First release: the reallocation plans of article 2 (A. Ferubko, O. Kazakov, BGITU). The project was
 built under the working name `jordanplan-deberka` (module `jordanplan`) and renamed to
 `deberka-jordan` (module `deberka_jordan`, command `deberka-jordan`) before publication.
 

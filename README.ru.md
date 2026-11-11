@@ -27,7 +27,7 @@ English version: [README.md](https://github.com/89605502155/deberka-jordan/blob/
 [Журнал изменений](https://github.com/89605502155/deberka-jordan/blob/main/CHANGELOG.md) ·
 [Задачи](https://github.com/89605502155/deberka-jordan/issues)
 
-Библиотека сопровождает статью 2 серии А. Ферубко, Брянский государственный
+Библиотека сопровождает статью 2 серии А. Ферубко и О. Д. Казакова, Брянский государственный
 инженерно-технологический университет (БГИТУ). Теория:
 [docs/ru/theory.md](https://github.com/89605502155/deberka-jordan/blob/main/docs/ru/theory.md).
 
@@ -116,13 +116,20 @@ bash scripts/install_hooks.sh   # один раз в клоне: огранич�
 ```
 
 Сообщения коммитов в этом репозитории: тема не длиннее 8 символов, тела нет. Хук ставит
-`scripts/install_hooks.sh`; CI проверяет то же правило через `scripts/check_commit_msg.py`.
+`scripts/install_hooks.sh` и запускает `scripts/check_commit_msg.py`.
 
 ## Цитирование
 
 См. [CITATION.cff](https://github.com/89605502155/deberka-jordan/blob/main/CITATION.cff)
 или кнопку «Cite this repository» на GitHub.
 
+## Авторы
+
+- Ферубко Андрей, [ORCID 0009-0006-5625-137X](https://orcid.org/0009-0006-5625-137X)
+- Казаков Олег Дмитриевич, [ORCID 0000-0001-9665-8138](https://orcid.org/0000-0001-9665-8138)
+
+Брянский государственный инженерно-технологический университет (БГИТУ).
+
 ## Лицензия
 
-MIT. Copyright (c) 2026 Andrey Ferubko. См. [LICENSE](https://github.com/89605502155/deberka-jordan/blob/main/LICENSE).
+MIT. Copyright (c) 2026 Andrey Ferubko, Oleg Kazakov. См. [LICENSE](https://github.com/89605502155/deberka-jordan/blob/main/LICENSE).

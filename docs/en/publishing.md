@@ -1,13 +1,14 @@
 # Publishing
 
-The package is published to PyPI from a version tag by `.github/workflows/publish.yml`,
-through PyPI trusted publishing: no API token is stored in the repository.
+The package is published to PyPI by hand. There is no automated publishing
+workflow in the repository, and no API token is stored in it.
 
-1. Update the version in `pyproject.toml`, add the entry to `CHANGELOG.md` and
-   update `CITATION.cff`.
-2. Check locally: `uv run ruff check . && uv run mypy && uv run pytest && uv build`.
-3. Tag and push: `git tag v0.1.0 && git push origin v0.1.0`.
-4. The workflow runs `uv build` and `uv publish --trusted-publishing always`.
+1. Set the version in `pyproject.toml` and `CITATION.cff`, and add the entry to `CHANGELOG.md`.
+   `deberka_jordan.__version__` is read from the installed package metadata.
+2. Check locally: `uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest`.
+3. Build: `uv build`. It writes the wheel and the source distribution to `dist/`.
+4. Upload: `uv publish --token <PyPI token>`. The token is your own; do not commit it.
+5. Tag the release commit and push the tag:
+   `git tag v0.0.1` and `git push origin main --tags`.
 
-Configure the trusted publisher once on PyPI for the repository
-`89605502155/deberka-jordan`, workflow `publish.yml`, environment `pypi`.
+The repository is `https://github.com/89605502155/deberka-jordan`.

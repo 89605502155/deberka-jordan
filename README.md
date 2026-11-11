@@ -27,8 +27,8 @@ Documentation: [English](https://github.com/89605502155/deberka-jordan/tree/main
 [Changelog](https://github.com/89605502155/deberka-jordan/blob/main/CHANGELOG.md) ·
 [Issues](https://github.com/89605502155/deberka-jordan/issues)
 
-The library accompanies article 2 of the series by Andrey Ferubko, Bryansk State
-Engineering-Technological University (BGITU). Theory:
+The library accompanies article 2 of the series by Andrey Ferubko and Oleg Kazakov,
+Bryansk State Engineering-Technological University (BGITU). Theory:
 [docs/en/theory.md](https://github.com/89605502155/deberka-jordan/blob/main/docs/en/theory.md).
 
 ## Installation
@@ -117,14 +117,21 @@ bash scripts/install_hooks.sh   # once per clone: commit message limits
 ```
 
 Commit messages in this repository have a subject of at most 8 characters and no
-body. The hook is installed by `scripts/install_hooks.sh`; CI checks the same rule
-with `scripts/check_commit_msg.py`.
+body. The hook is installed by `scripts/install_hooks.sh` and runs
+`scripts/check_commit_msg.py`.
 
 ## Citation
 
 See [CITATION.cff](https://github.com/89605502155/deberka-jordan/blob/main/CITATION.cff)
 or the "Cite this repository" button on GitHub.
 
+## Authors
+
+- Andrey Ferubko, [ORCID 0009-0006-5625-137X](https://orcid.org/0009-0006-5625-137X)
+- Oleg Kazakov, [ORCID 0000-0001-9665-8138](https://orcid.org/0000-0001-9665-8138)
+
+Bryansk State Engineering-Technological University (BGITU).
+
 ## License
 
-MIT. Copyright (c) 2026 Andrey Ferubko. See [LICENSE](https://github.com/89605502155/deberka-jordan/blob/main/LICENSE).
+MIT. Copyright (c) 2026 Andrey Ferubko, Oleg Kazakov. See [LICENSE](https://github.com/89605502155/deberka-jordan/blob/main/LICENSE).

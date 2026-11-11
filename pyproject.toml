@@ -1,22 +1,33 @@
 [project]
-name = "jordanplan-deberka"
+name = "deberka-jordan"
 version = "0.1.0"
-description = "Reallocation plans for a shared resource by the Hahn-Jordan decomposition: least-volume netting, safe two-phase execution, oscillation index and dead band choice (KVM memory ballooning and beyond)."
+description = "Reallocation plans for a shared resource from the Hahn-Jordan decomposition: least-volume netting, a safe two-phase order, oscillation index and dead-band choice, with a libvirt balloon backend"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-authors = [{ name = "Andrey Ferubko" }]
+authors = [
+    { name = "Andrey Ferubko", email = "ferubko1999@yandex.ru" },
+]
 requires-python = ">=3.11"
 dependencies = []
 keywords = [
-    "signed measure", "Jordan decomposition", "Hahn decomposition", "resource allocation",
-    "memory ballooning", "KVM", "libvirt", "virtual machines", "netting", "dead band",
+    "signed-measure",
+    "jordan-decomposition",
+    "hahn-decomposition",
+    "resource-allocation",
+    "netting",
+    "dead-band",
+    "memory-ballooning",
+    "kvm",
+    "libvirt",
+    "virtual-machines",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Intended Audience :: System Administrators",
-    "Operating System :: OS Independent",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.11",
@@ -24,8 +35,8 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Mathematics",
-    "Topic :: System :: Distributed Computing",
-    "Topic :: System :: Operating System",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Operating System Kernels :: Linux",
     "Typing :: Typed",
 ]
 
@@ -33,35 +44,98 @@ classifiers = [
 kvm = ["libvirt-python>=8.0"]
 
 [project.scripts]
-jordanplan = "jordanplan.cli:main"
+deberka-jordan = "deberka_jordan.cli:main"
 
-# [project.urls] - add Homepage / Repository after publishing on GitHub
+[project.urls]
+Homepage = "https://github.com/89605502155/deberka-jordan"
+Documentation = "https://github.com/89605502155/deberka-jordan/tree/main/docs"
+Repository = "https://github.com/89605502155/deberka-jordan"
+Issues = "https://github.com/89605502155/deberka-jordan/issues"
+Changelog = "https://github.com/89605502155/deberka-jordan/blob/main/CHANGELOG.md"
 
 [dependency-groups]
-dev = ["pytest>=8", "hypothesis>=6.100", "ruff>=0.6", "mypy>=1.11"]
+dev = [
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "ruff>=0.16.10",
+    "hypothesis>=6.100",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.9,<0.12.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
-module-name = "jordanplan"
+module-name = "deberka_jordan"
+# The source distribution also carries the tests, documentation and examples.
+source-include = [
+    "tests/**",
+    "docs/**",
+    "examples/**",
+    "experiments/**",
+    "scripts/**",
+    "README.ru.md",
+    "CHANGELOG.md",
+    "CITATION.cff",
+]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = ["--doctest-modules", "--import-mode=importlib"]
+testpaths = ["tests", "src"]
+pythonpath = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--doctest-modules",
+    "--import-mode=importlib",
+]
+filterwarnings = ["error"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "RUF"]
+select = [
+    "E", "W", "F", "I", "N", "D", "UP", "B", "A", "C4", "EM", "ISC", "PIE", "PT", "RET",
+    "SIM", "TID", "ARG", "PTH", "PGH", "T20", "PERF", "FURB", "NPY", "PL", "RUF", "S",
+]
+ignore = [
+    "PLR0911", # too many return statements
+    "PLR0912", # too many branches
+    "PLR0913", # too many arguments: the API mirrors the notation of the paper
+    "PLR0917", # too many positional arguments: the same
+    "PLR0915", # too many statements
+    "PLR2004", # magic values: the constants are those of the paper and the testbed
+    "PLC0415", # imports inside functions keep optional dependencies optional
+]
+# Greek letters and mathematical signs in docstrings are formulas, not typos.
+allowed-confusables = ["ν", "α", "ρ", "σ", "γ", "ℓ", "×", "−", "–", "θ", "η", "λ", "ξ", "κ", "δ", "Δ", "ε", "φ", "μ", "π", "τ"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "D", "S101", "S311", "ARG002", "PLR2004", "PLR0917", "T20", "N802", "N803", "N806", "PERF", "PT011", "ARG001", "ARG005",
+    "RUF001", "RUF002", "RUF003",
+]
+"examples/**" = ["D", "T20", "S101", "S311", "ARG002", "INP001"]
+"experiments/**" = ["D", "T20", "INP001", "ARG001", "ARG005", "S311"]  # heavy scripts, not run in CI
+"scripts/**" = ["D", "T20", "INP001", "S603", "S607", "PTH123"]  # git calls
+"src/deberka_jordan/cli.py" = ["T20"]  # the command-line tool prints its report
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.isort]
+known-first-party = ["deberka_jordan"]
+
+[tool.ruff.format]
+docstring-code-format = true
 
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["src/jordanplan"]
+files = ["src/deberka_jordan"]
 
 [[tool.mypy.overrides]]
 module = ["libvirt"]

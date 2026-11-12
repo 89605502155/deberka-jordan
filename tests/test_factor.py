@@ -58,7 +58,8 @@ def test_plan_volume_default_is_plan_volume_property():
     p = jordan_plan(cur, new, pool_free=100.0)
     assert plan_volume(p) == p.volume
     assert plan_volume(p, factor=1.0) == p.volume
-    assert plan_volume(p, factor=2.0) == p.operations
+    # balloon operations: the "weighted" mode with the legacy pool weight 0.5
+    assert plan_volume(p, factor=2.0, pool="weighted") == p.operations
 
 
 # Factor 1 counts each transferred byte once ---------------------------------
@@ -74,8 +75,9 @@ def test_plan_volume_is_linear_in_the_factor():
     cur = {"vm1": 2000.0, "vm2": 3000.0, "vm3": 1500.0, "vm4": 2500.0}
     new = {"vm1": 2600.0, "vm2": 2500.0, "vm3": 1530.0, "vm4": 2100.0}
     p = jordan_plan(cur, new, pool_free=100.0)
-    assert plan_volume(p, factor=2.0) == pytest.approx(p.operations)
-    assert plan_volume(p, factor=3.0) == pytest.approx(1.5 * p.operations)
+    assert plan_volume(p, factor=2.0, pool="weighted") == pytest.approx(p.operations)
+    assert plan_volume(p, factor=3.0, pool="weighted") == pytest.approx(1.5 * p.operations)
+    assert plan_volume(p, factor=3.0) == pytest.approx(3.0 * p.volume)
 
 
 @given(transfers, st.floats(0.1, 10.0))
@@ -108,7 +110,9 @@ def test_factor_one_is_never_above_factor_two_for_jordan(ts):
 def test_plan_volume_scales_with_factor(cur, pool, factor):
     new = {c: max(0.0, a * 0.7 + 300.0) for c, a in cur.items()}
     p = jordan_plan(cur, new, pool)
-    assert plan_volume(p, factor=factor) == pytest.approx(factor / 2.0 * p.operations)
+    assert plan_volume(p, factor=factor, pool="weighted") == pytest.approx(
+        factor / 2.0 * p.operations
+    )
 
 
 # Netting by cycle -----------------------------------------------------------
@@ -163,6 +167,7 @@ def test_cli_plan_factor(tmp_path, capsys):
     assert main(["plan", str(f), "--pool", "100", "--factor", "2"]) == 0
     balloon = json.loads(capsys.readouterr().out)
     assert balloon["volume"] == pytest.approx(2 * default["volume"])
+    assert default["volume_pool_mode"] == "max"
     assert default["volume_factor"] == 1.0
     assert balloon["volume_factor"] == 2.0
 

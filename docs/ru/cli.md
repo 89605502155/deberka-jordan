@@ -11,7 +11,7 @@
 
     deberka-jordan plan state.csv --pool 100 --deadband 64
 
-Печатает JSON с полями `donors`, `recipients`, `skipped`, `take`, `give`, `volume`,
+Печатает JSON с полями `donors`, `recipients`, `skipped`, `take`, `give`, `volume` (с `volume_pool_mode`),
 `pool_before`, `pool_peak`, `pool_after`, `rationed`, `min_pool_two_phase`,
 `min_pool_recipients_first` и списками фаз `phase1`, `phase2`.
 
@@ -20,6 +20,8 @@
 | `--pool` | свободный пул до цикла, МиБ | обязателен |
 | `--deadband` | изменения меньше этой величины пропускаются, МиБ | 0 |
 | `--factor` | единица `volume`: 1 = перенесённые между потребителями байты, 2 = балонные операции | 1 |
+| `--pool-mode` | слагаемое пула в `volume`: `max` = `max(take, give)` (перенесённые байты, байты пула считаются полностью), `weighted` = совпавшие байты + `--pool-weight` · изменение пула | `max` |
+| `--pool-weight` | при `--pool-mode weighted`: единиц на байт, уходящий в пул или приходящий из него; 0.5 даёт половину балонных операций (как при `weighted` до раунда 5) | 0.5 |
 
 ## `net`
 

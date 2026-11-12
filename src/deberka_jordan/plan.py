@@ -69,19 +69,21 @@ class Plan(Generic[K]):
         """Balloon operations ``sum |nu({i})|`` over consumers (Claim 1, factor 2).
 
         Each byte moved between two consumers is one deflation and one inflation,
-        so this is :func:`plan_volume` with ``factor=2``.
+        so this is ``plan_volume(plan, factor=2, pool="weighted", pool_weight=0.5)``.
         """
         return self.take + self.give
 
     @property
     def volume(self) -> float:
-        """Bytes moved by the plan, the default of :func:`plan_volume` (factor 1).
+        """Bytes moved by the plan: ``plan_volume(plan)`` with the default pool mode.
 
-        Equal to ``operations / 2``. For a plan that leaves the pool unchanged this
-        is exactly the bytes moved between consumers; for a plan that changes the
-        pool see :func:`plan_volume`.
+        The default is ``pool="max"`` (article choice): ``max(take, give)``, that is
+        the bytes moved between consumers plus the bytes moved into or out of the
+        pool, each counted once. For a plan that leaves the pool unchanged this is
+        ``operations / 2``. For a plan that changes the pool it is larger than
+        ``operations / 2``; see :func:`plan_volume` for the other mode.
         """
-        return self.operations / 2.0
+        return plan_volume(self)
 
     @property
     def peak(self) -> float:
@@ -212,20 +214,80 @@ def _check_factor(factor: object) -> float:
     return value
 
 
-def plan_volume(plan: Plan[Any], *, factor: float = 1.0) -> float:
+# Ways to count the bytes that a plan moves into or out of the pool.
+POOL_MODES = ("max", "weighted")
+
+
+def _check_pool_mode(pool: object) -> str:
+    """Return the pool mode, or raise: a string from :data:`POOL_MODES`."""
+    if not isinstance(pool, str):
+        msg = f"pool must be a string, got {type(pool).__name__} {pool!r}"
+        raise TypeError(msg)
+    if pool not in POOL_MODES:
+        msg = f"pool must be one of {POOL_MODES}, got {pool!r}"
+        raise ValueError(msg)
+    return pool
+
+
+def _check_pool_weight(weight: object) -> float:
+    """Return the pool weight as a float, or raise.
+
+    The weight is the units counted per byte moved into or out of the pool,
+    relative to one unit per byte moved between consumers. It must be a real
+    number, finite and non-negative: a bool, a string or ``None`` raises
+    ``TypeError``; a negative or non-finite value raises ``ValueError``.
+    """
+    if isinstance(weight, bool) or not isinstance(weight, numbers.Real):
+        msg = f"pool_weight must be a real number, got {type(weight).__name__} {weight!r}"
+        raise TypeError(msg)
+    value = float(weight)
+    if not math.isfinite(value) or value < 0.0:
+        msg = f"pool_weight must be finite and non-negative, got {value!r}"
+        raise ValueError(msg)
+    return value
+
+
+def plan_volume(
+    plan: Plan[Any],
+    *,
+    factor: float = 1.0,
+    pool: str = "max",
+    pool_weight: float = 0.5,
+) -> float:
     """Volume of a plan in units of ``factor`` per byte moved between consumers.
 
-    It equals ``(factor / 2) * sum |nu({i})|`` over consumers (``plan.operations``).
-    The default ``factor=1`` counts each byte moved between two consumers once,
-    so it equals ``plan.volume`` (bytes). ``factor=2`` gives the balloon
-    operations of Claim 1. The pool atom is excluded, as in Claim 1. For a plan
-    that leaves the pool unchanged the result is exactly ``factor`` times the
-    bytes moved. A byte moved into or out of the pool counts as one balloon
-    operation, that is half a byte at ``factor=1``, so for a plan that changes
-    the pool the result is not the number of bytes moved (open point 2 in the
-    article notes).
+    With ``take = Σ donors``, ``give = Σ recipients`` and ``m = min(take, give)``
+    (bytes moved between consumers) the volume is::
+
+        factor * (m + w * |take - give|)
+
+    where ``|take - give| = |pool_change|`` is the pool movement and ``w`` depends
+    on ``pool``:
+
+    * ``pool="max"`` (default, article choice): ``w = 1``. The volume is
+      ``factor * max(take, give)``: every byte moved into or out of the pool counts
+      as a byte, the same as a byte moved between consumers.
+    * ``pool="weighted"``: ``w = pool_weight`` (default 0.5). With ``w = 0.5`` the
+      volume is ``factor / 2 * plan.operations``, the value of earlier versions:
+      a pool byte is one balloon operation, half a byte.
+
+    A plan that leaves the pool unchanged (``take == give``) has the same volume in
+    every mode: ``factor * take``. With ``factor=1`` the default is the bytes moved;
+    ``factor=2`` gives balloon operations only in the ``"weighted"`` mode with
+    ``pool_weight=0.5``. In the ``"max"`` mode a pool byte counts two balloon
+    operations at ``factor=2`` (it is one operation physically), so use that
+    combination knowingly. ``pool_weight`` is validated also when it is not used.
+
+    Raises ``TypeError`` for a non-numeric ``factor`` or ``pool_weight``, a
+    non-string ``pool``, and ``ValueError`` for a non-finite or non-positive
+    ``factor``, a ``pool`` not in :data:`POOL_MODES`, or a negative or non-finite
+    ``pool_weight``.
     """
-    return _check_factor(factor) / 2.0 * plan.operations
+    f = _check_factor(factor)
+    mode = _check_pool_mode(pool)
+    w = _check_pool_weight(pool_weight)
+    weight = 1.0 if mode == "max" else w
+    return f * (min(plan.take, plan.give) + weight * abs(plan.pool_change))
 
 
 def sequential_volume(transfers: Iterable[tuple[K, K, float]], *, factor: float = 1.0) -> float:

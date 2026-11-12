@@ -23,7 +23,7 @@ target = {"vm1": 2600.0, "vm2": 2500.0, "vm3": 1530.0, "vm4": 2100.0}
 plan = jordan_plan(current, target, pool_free=100.0, deadband=64.0)
 print(plan.donors, plan.recipients)  # кто отдаёт и кто получает, МиБ
 print(plan.skipped)  # изменения меньше порога нечувствительности
-print(plan.volume)  # 750.0: байты, перенесённые планом
+print(plan.volume)  # 900.0: байты, перенесённые планом (600 между потребителями, 300 в пул)
 print(min_pool(two_phase(plan), 100.0))  # 100.0: безопасный порядок
 print(min_pool(recipients_first(plan), 100.0))  # -500.0: небезопасный порядок
 ```

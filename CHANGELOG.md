@@ -19,9 +19,21 @@ built under the working name `jordanplan-deberka` (module `jordanplan`) and rena
   `factor=1` counts each byte moved between two consumers once; `factor=2` gives the balloon
   operations (a deflation at the donor and an inflation at the recipient). Must be finite and
   positive (`ValueError`), a number (`TypeError`). The gain does not depend on it.
-- `Plan.volume` is the bytes moved (`Plan.operations / 2`), equal to `plan_volume(plan)`;
+- `Plan.volume` is `plan_volume(plan)` with the default `pool="max"`: `max(take, give)`, the
+  bytes moved (equal to `Plan.operations / 2` when the pool does not change).
   `Plan.operations = Σ |ν({i})|` is the balloon-operation measure of Claim 1.
   `lower_bound_volume` is that measure (operations).
 - Command line `plan --factor` and `net --factor` (default 1); the JSON output adds
   `volume_factor`.
   The `deadband` volume is not scaled: a dead-band jump is one operation on one consumer.
+- Pool term of the plan volume: `plan_volume(plan, *, factor=1.0, pool="max", pool_weight=0.5)`.
+  `pool="max"` (default) counts a byte moved into or out of the pool as a byte:
+  `factor · max(take, give)`. `pool="weighted"` gives `factor · (min(take, give) + pool_weight ·
+  |pool change|)`; `pool_weight=0.5` reproduces the balloon operations over two of earlier
+  versions. Errors: `pool` not a string (`TypeError`) or not in `("max", "weighted")`
+  (`ValueError`); `pool_weight` not a real number (`TypeError`) or not finite and
+  non-negative (`ValueError`). For a plan that does not change the pool all modes coincide.
+  `netting_report` has no pool term: its logs are transfers between consumers.
+- Command line `plan --pool-mode {max,weighted}` (default `max`) and `--pool-weight W`
+  (default 0.5); the `plan` output adds `volume_pool_mode` and `volume_pool_weight`. The
+  free pool level stays `--pool`.

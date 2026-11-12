@@ -30,7 +30,8 @@ value of its net change, by the triangle inequality. The bound is attained when
 every consumer only gives or only receives. The Jordan plan does exactly that: it
 nets all proposals of the cycle per consumer and executes only the net change.
 The plan has `Plan.operations = Σ |ν({i})|` balloon operations; in bytes, the
-default unit, its volume is `Plan.volume = Σ |ν({i})| / 2`. The proposals executed
+default unit, its volume is `Plan.volume = plan_volume(plan)` with the default pool mode
+`max`: `max(take, give)`. It equals `Σ |ν({i})| / 2` when the pool does not change. The proposals executed
 one by one cost `2 Σ amount` operations, that is `Σ amount` bytes, so the gain is
 `1 − W / W_seq` (`netting_report`).
 
@@ -44,10 +45,22 @@ of `W` as first stated. The factor only sets the unit: it scales the sequential
 and the Jordan volume alike (`plan_volume` and `netting_report` use
 `(factor / 2) Σ |net|`), so the gain `1 − W / W_seq` does not depend on it. A plan
 that leaves the pool unchanged moves `Σ |net| / 2` bytes, so its volume in bytes is
-exactly `Σ |ν| / 2`. A byte moved into or out of the pool counts as one balloon
-operation, that is half a byte at `factor=1`; for a plan that changes the pool the
-bytes volume is therefore not the number of bytes moved (open point 2 of the
-article notes).
+exactly `Σ |ν| / 2`.
+
+A byte moved into or out of the pool is one balloon operation, while a byte moved
+between consumers is two. The volume must therefore say how a pool byte counts
+(the `pool` argument of `plan_volume`):
+
+* `pool="max"` (default): `factor · max(take, give)`. Every byte moved, between
+  consumers or into or out of the pool, counts once. This is the number of bytes
+  moved, and it is the article's choice.
+* `pool="weighted"`: `factor · (min(take, give) + pool_weight · |take − give|)` with
+  `pool_weight = 0.5` by default. At `factor=2` this is `Σ |ν|`, the balloon
+  operations; earlier versions used it.
+
+Both modes coincide for a plan that does not change the pool, and the gain
+`1 − W / W_seq` does not depend on the mode. Netting logs contain transfers between
+consumers only, so `netting_report` has no pool term.
 
 ## 3. Claim 2.2: the safe order (elementary)
 

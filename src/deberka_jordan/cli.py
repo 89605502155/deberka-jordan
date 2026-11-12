@@ -20,7 +20,7 @@ from . import __version__
 from .churn import choose_deadband, deadband_sweep
 from .csvio import read_proposals, read_state, read_trace, write_rows
 from .order import min_pool, recipients_first, two_phase
-from .plan import jordan_plan, netting_by_cycle, plan_volume
+from .plan import POOL_MODES, jordan_plan, netting_by_cycle, plan_volume
 
 
 def _floats(text: str) -> list[float]:
@@ -40,6 +40,19 @@ def _factor(text: str) -> float:
     return value
 
 
+def _pool_weight(text: str) -> float:
+    """Argparse type of ``--pool-weight``: a finite non-negative number."""
+    try:
+        value = float(text)
+    except ValueError:
+        msg = f"pool-weight must be a number, got {text!r}"
+        raise argparse.ArgumentTypeError(msg) from None
+    if not math.isfinite(value) or value < 0.0:
+        msg = f"pool-weight must be finite and non-negative, got {text!r}"
+        raise argparse.ArgumentTypeError(msg)
+    return value
+
+
 def _cmd_plan(args: argparse.Namespace) -> int:
     cur, tgt = read_state(args.state)
     p = jordan_plan(cur, tgt, args.pool, deadband=args.deadband)
@@ -49,8 +62,12 @@ def _cmd_plan(args: argparse.Namespace) -> int:
         "skipped": p.skipped,
         "take": p.take,
         "give": p.give,
-        "volume": plan_volume(p, factor=args.factor),
+        "volume": plan_volume(
+            p, factor=args.factor, pool=args.pool_mode, pool_weight=args.pool_weight
+        ),
         "volume_factor": args.factor,
+        "volume_pool_mode": args.pool_mode,
+        "volume_pool_weight": args.pool_weight if args.pool_mode == "weighted" else None,
         "pool_before": p.pool_before,
         "pool_peak": p.peak,
         "pool_after": p.pool_after,
@@ -143,6 +160,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=_factor,
         default=1.0,
         help="volume unit: 1 = bytes moved between consumers (default), 2 = balloon operations",
+    )
+    p.add_argument(
+        "--pool-mode",
+        choices=POOL_MODES,
+        default="max",
+        help="how bytes into/out of the pool count in volume: max = max(take, give) "
+        "(default, article choice); weighted = matched bytes + pool-weight * |pool change|",
+    )
+    p.add_argument(
+        "--pool-weight",
+        type=_pool_weight,
+        default=0.5,
+        help="with --pool-mode weighted: units per byte moved into/out of the pool, "
+        "relative to one per byte between consumers (default 0.5: half the balloon operations, "
+        "which is the count at --factor 2)",
     )
     p.set_defaults(func=_cmd_plan)
 

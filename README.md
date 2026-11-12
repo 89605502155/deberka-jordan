@@ -12,7 +12,8 @@ computes:
 
 * the Hahn decomposition of the cycle: donors and recipients;
 * the Jordan plan, the netting of all proposals of a cycle with the least
-  volume of operations, `W = Σ |ν({i})|` (bytes moved: `W / 2`);
+  volume of operations, `W = Σ |ν({i})|`; the volume in bytes is `plan_volume`
+  (default `pool="max"`, see the theory);
 * a safe two-phase order (donors first, then recipients) that never overdraws
   the pool, and an executor that waits for the memory actually freed;
 * the oscillation index `κ` of a controller on the time axis and a dead band `h`
@@ -52,7 +53,7 @@ print(nu.total(), nu.total_variation())  # 0.0 6.0
 current = {"vm1": 2000.0, "vm2": 3000.0, "vm3": 1500.0, "vm4": 2500.0}  # MiB
 target = {"vm1": 2600.0, "vm2": 2500.0, "vm3": 1530.0, "vm4": 2100.0}
 plan = jordan_plan(current, target, pool_free=100.0, deadband=64.0)
-print(plan.volume)  # 750.0 MiB moved (bytes, the default unit)
+print(plan.volume)  # 900.0 MiB: 600 between consumers + 300 into the pool (pool="max")
 print(min_pool(two_phase(plan), 100.0))  # 100.0: the pool never goes below its start
 print(min_pool(recipients_first(plan), 100.0))  # -500.0: the wrong order overdraws it
 

@@ -25,7 +25,7 @@ must be consistent; the examples use MiB.
 ceiling=None, priority=None) -> Plan`
 
 The plan has `donors`, `recipients`, `skipped`, `rationed`, `pool_before` and the
-properties `take`, `give`, `pool_change`, `pool_after`, `volume` (bytes), `operations` (balloon operations), `peak`,
+properties `take`, `give`, `pool_change`, `pool_after`, `volume` (bytes, `pool="max"`), `operations` (balloon operations), `peak`,
 `is_empty`, and the methods `measure(pool)` and `targets(current)`.
 
 | Function | Meaning |
@@ -35,7 +35,7 @@ properties `take`, `give`, `pool_change`, `pool_after`, `volume` (bytes), `opera
 | `sequential_volume(transfers, *, factor=1.0)` | `factor · Σ amount`; the default `factor=1` gives the bytes transferred, `factor=2` the balloon operations |
 | `lower_bound_volume(nu, pool=POOL)` | `W = Σ |ν({i})|` over consumers: balloon operations; in bytes `W / 2` |
 | `netting_report(transfers, cycle=None, *, factor=1.0)` | `NettingReport` with `ratio` and `gain`; the Jordan volume is `(factor / 2) Σ |net|`, the gain does not depend on `factor` |
-| `plan_volume(plan, *, factor=1.0)` | `(factor / 2) Σ |ν({i})|` over consumers; the default is `plan.volume` (bytes), `factor=2` is `plan.operations` |
+| `plan_volume(plan, *, factor=1.0, pool="max", pool_weight=0.5)` | `factor · (min(take, give) + w · |pool change|)`; `w = 1` for `pool="max"` (default, the bytes moved; `plan.volume`), `w = pool_weight` for `pool="weighted"`; `pool="weighted", pool_weight=0.5, factor=2` is `plan.operations` |
 | `netting_by_cycle(rows, *, factor=1.0)` | One report per cycle of `(cycle, source, recipient, amount)` rows |
 
 ## Orders (`deberka_jordan.order`)

@@ -23,7 +23,7 @@ target = {"vm1": 2600.0, "vm2": 2500.0, "vm3": 1530.0, "vm4": 2100.0}
 plan = jordan_plan(current, target, pool_free=100.0, deadband=64.0)
 print(plan.donors, plan.recipients)  # who gives and who receives, MiB
 print(plan.skipped)  # changes below the dead band
-print(plan.volume)  # 750.0: bytes moved by the plan
+print(plan.volume)  # 900.0: bytes moved (600 between consumers, 300 into the pool)
 print(min_pool(two_phase(plan), 100.0))  # 100.0: the safe order
 print(min_pool(recipients_first(plan), 100.0))  # -500.0: the unsafe order
 ```

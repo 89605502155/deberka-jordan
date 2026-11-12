@@ -12,7 +12,7 @@ input is a CSV file with the columns `consumer,current,target` (MiB).
     deberka-jordan plan state.csv --pool 100 --deadband 64
 
 Prints a JSON object with `donors`, `recipients`, `skipped`, `take`, `give`,
-`volume`, `pool_before`, `pool_peak`, `pool_after`, `rationed`,
+`volume` (with `volume_pool_mode`), `pool_before`, `pool_peak`, `pool_after`, `rationed`,
 `min_pool_two_phase`, `min_pool_recipients_first`, and the phase lists `phase1`
 and `phase2`.
 
@@ -21,6 +21,8 @@ and `phase2`.
 | `--pool` | free pool before the cycle, MiB | required |
 | `--deadband` | changes below this size are skipped, MiB | 0 |
 | `--factor` | unit of `volume`: 1 = bytes moved between consumers, 2 = balloon operations | 1 |
+| `--pool-mode` | pool term of `volume`: `max` = `max(take, give)` (bytes moved, the pool bytes count fully), `weighted` = matched bytes + `--pool-weight` · pool change | `max` |
+| `--pool-weight` | with `--pool-mode weighted`: units per byte into or out of the pool; 0.5 gives the balloon operations over two | 0.5 |
 
 ## `net`
 

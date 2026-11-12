@@ -40,6 +40,7 @@ from .order import (
     two_phase,
 )
 from .plan import (
+    POOL_MODES,
     NettingReport,
     Plan,
     Transfer,
@@ -60,6 +61,7 @@ except PackageNotFoundError:  # pragma: no cover - running from a source tree
 
 __all__ = [
     "POOL",
+    "POOL_MODES",
     "Backend",
     "ExecReport",
     "HahnDecomposition",

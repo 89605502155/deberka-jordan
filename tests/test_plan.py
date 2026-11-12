@@ -38,7 +38,10 @@ def test_plan_matches_measure():
     assert nu.total() == pytest.approx(0.0)
     assert nu[POOL] == pytest.approx(p.pool_change)
     assert p.operations == pytest.approx(lower_bound_volume(nu))
-    assert p.volume == pytest.approx(lower_bound_volume(nu) / 2)
+    # volume uses the default pool mode "max": here the pool changes, so it is
+    # above half the operations (see tests/test_pool.py)
+    assert p.volume == pytest.approx(max(p.take, p.give))
+    assert p.volume >= lower_bound_volume(nu) / 2
     assert p.targets(CUR) == pytest.approx(NEW)
 
 

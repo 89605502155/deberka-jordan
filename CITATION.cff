@@ -8,8 +8,8 @@ abstract: >-
   proposals, a safe two-phase order that never overdraws the pool, an executor
   that waits for freed memory, the oscillation index and the dead-band choice
   on demand traces, and a libvirt balloon backend for KVM virtual machines.
-version: 0.0.1
-date-released: 2026-11-11
+version: 0.0.2
+date-released: 2026-11-14
 license: MIT
 repository-code: "https://github.com/89605502155/deberka-jordan"
 url: "https://github.com/89605502155/deberka-jordan"

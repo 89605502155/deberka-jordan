@@ -1,6 +1,6 @@
 [project]
 name = "deberka-jordan"
-version = "0.0.1"
+version = "0.0.2"
 description = "Reallocation plans for a shared resource from the Hahn-Jordan decomposition: least-volume netting, a safe two-phase order, oscillation index and dead-band choice, with a libvirt balloon backend"
 readme = "README.md"
 license = "MIT"

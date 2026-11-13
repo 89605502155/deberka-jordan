@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.0.2] — 2026-11-14
+
+- `replay_reserve` takes the dead band `deadband` with the default `DEFAULT_DEADBAND = 64.0`
+  (MiB), the value of article 2 (trace A, reserve 256 MiB, interval 2 s). `jordan_plan` keeps
+  the default `deadband=0`.
+- Balloon direction made consistent with the code and the executors: the donor's balloon
+  inflates (the VM gives up memory, its target is lowered), the recipient's balloon deflates.
+  The docstrings of `plan.py`, the theory in `docs/ru/theory.md` and `docs/en/theory.md`,
+  and the `factor` description were corrected. No numbers changed.
+- Tests: 115 pass.
+
 ## [0.0.1] — 2026-11-11
 
 First release: the reallocation plans of article 2 (A. Ferubko, O. Kazakov, BGITU). The project was

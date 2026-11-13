@@ -1,7 +1,7 @@
 """The volume factor: units per byte moved between two consumers (default 1: bytes).
 
 Factor 2 gives the balloon operations: a byte moved between consumers is one
-deflation and one inflation.
+inflation and one deflation.
 """
 
 import json

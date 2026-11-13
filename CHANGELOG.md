@@ -17,7 +17,7 @@ built under the working name `jordanplan-deberka` (module `jordanplan`) and rena
 - Volume unit (default 1, bytes): `sequential_volume`, `netting_report`, `netting_by_cycle`
   take `factor`, and `plan_volume(plan, *, factor=1.0)` is the volume of a plan. The default
   `factor=1` counts each byte moved between two consumers once; `factor=2` gives the balloon
-  operations (a deflation at the donor and an inflation at the recipient). Must be finite and
+  operations (an inflation at the donor and a deflation at the recipient). Must be finite and
   positive (`ValueError`), a number (`TypeError`). The gain does not depend on it.
 - `Plan.volume` is `plan_volume(plan)` with the default `pool="max"`: `max(take, give)`, the
   bytes moved (equal to `Plan.operations / 2` when the pool does not change).

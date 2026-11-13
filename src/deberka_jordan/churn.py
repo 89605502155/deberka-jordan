@@ -116,12 +116,16 @@ class ReplayResult:
     """Median of the oscillation index over consumers and window positions."""
 
 
+DEFAULT_DEADBAND = 64.0
+"""Default dead band ``h``, MiB: the value of the article (trace A, reserve 256 MiB, interval 2 s)."""
+
+
 def replay_reserve(
     demand: Mapping[Any, Sequence[float]],
     dt: float,
     *,
     reserve: float,
-    deadband: float,
+    deadband: float = DEFAULT_DEADBAND,
     interval: float | None = None,
     theta: float = 64.0,
     kappa_window: float = 60.0,

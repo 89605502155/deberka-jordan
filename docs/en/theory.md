@@ -38,8 +38,8 @@ one by one cost `2 Σ amount` operations, that is `Σ amount` bytes, so the gain
 ### The unit: bytes by default
 
 A byte moved from a donor to a recipient is two balloon operations: the donor's
-balloon deflates (it releases the byte) and the recipient's balloon inflates (it
-takes the byte). The volume is reported in bytes by default (`factor=1`, each
+balloon inflates (it takes the byte from the VM) and the recipient's balloon deflates
+(it returns the byte to the VM). The volume is reported in bytes by default (`factor=1`, each
 transferred byte counted once). `factor=2` gives the balloon operations, the unit
 of `W` as first stated. The factor only sets the unit: it scales the sequential
 and the Jordan volume alike (`plan_volume` and `netting_report` use

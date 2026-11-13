@@ -68,7 +68,7 @@ class Plan(Generic[K]):
     def operations(self) -> float:
         """Balloon operations ``sum |nu({i})|`` over consumers (Claim 1, factor 2).
 
-        Each byte moved between two consumers is one deflation and one inflation,
+        Each byte moved between two consumers is one inflation and one deflation,
         so this is ``plan_volume(plan, factor=2, pool="weighted", pool_weight=0.5)``.
         """
         return self.take + self.give
@@ -294,7 +294,7 @@ def sequential_volume(transfers: Iterable[tuple[K, K, float]], *, factor: float 
     """Volume when every proposal is executed on its own: ``factor * sum amount``.
 
     The default ``factor=1`` gives the bytes transferred. Each transfer is also
-    one balloon deflation at the donor and one inflation at the recipient, two
+    one balloon inflation at the donor and one deflation at the recipient, two
     balloon operations per byte: ``factor=2`` gives those operations.
     """
     value = _check_factor(factor)

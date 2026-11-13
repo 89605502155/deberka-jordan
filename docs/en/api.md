@@ -67,7 +67,7 @@ A backend has `now()`, `get_actual(consumer)`, `set_target(consumer, target)` an
 | `window_stats(times, deltas, t_now, window)`, `kappa_series(...)` | Sliding window |
 | `sampled_variation(samples)` | `V = Σ |d_k − d_{k−1}|` |
 | `cycles_bound(samples, h)` | `V / h`, the bound of claim 2.3 |
-| `replay_reserve(demand, dt, *, reserve, deadband, interval=None, theta=64, ...)` | `ReplayResult` |
+| `replay_reserve(demand, dt, *, reserve, deadband=64, interval=None, theta=64, ...)` | `ReplayResult` |
 | `deadband_sweep(demand, dt, deadbands, **kwargs)` | Replay for each `h` |
 | `choose_deadband(results, kappa_target=0.5)` | Smallest `h` with median `κ` at most the target |
 
